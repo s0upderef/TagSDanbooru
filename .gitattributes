@@ -1,0 +1,13 @@
+# 行尾统一：这是 Windows 项目，检出时保持 CRLF（.bat 必须是 CRLF 才能正常执行）
+* text=auto eol=crlf
+
+# 二进制文件不做行尾转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.7z binary
+
+# 标签数据快照：大文件，原样存储、不做行尾转换 / 文本 diff
+_internal/data/*.csv  -text -diff

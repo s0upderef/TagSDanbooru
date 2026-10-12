@@ -1,0 +1,29 @@
+# ============ 运行产物（不进仓库）============
+_internal/.browser/
+_internal/.session.json
+_internal/logs/
+_internal/output/
+_internal/sweeps/
+
+# ============ Danbooru 标签数据（随仓库附带快照，见 README「前置要求」）============
+_internal/data/*
+!_internal/data/danbooru_all_2.csv
+
+# ============ 个人配置 / 提示词库 ============
+_internal/config.json
+_internal/dev/prompts/
+_internal/dev/_preview/
+_internal/dev/README.full.md
+_internal/assets/
+
+# ============ Python ============
+__pycache__/
+*.pyc
+*.pyo
+
+# ============ 编辑器 / 系统 ============
+.vscode/
+.idea/
+*.tmp
+Thumbs.db
+Desktop.ini

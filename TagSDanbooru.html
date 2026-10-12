@@ -1,0 +1,2355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TagSDanbooru · Danbooru 标签助手</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+    <style>
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(20%);
+            box-shadow: 0 4px 10px -1px rgba(0, 0, 0, 0.55);
+            margin-bottom: 0.5rem;
+            transition: box-shadow 0.2s ease;
+        }
+        header.scrolled {
+            box-shadow: 0 6px 18px -2px rgba(0, 0, 0, 0.7);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            background: linear-gradient(135deg, #0b1220 0%, #111c2e 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .tag-selected {
+            filter: grayscale(45%);
+            transform: scale(0.95);
+            box-shadow: none;
+        }
+        .tag-selected::after {
+            content: '✔';
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 9999px;
+            width: 18px;
+            height: 18px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            line-height: 1;
+            box-shadow: 0 0 0 2px #0b1220;
+        }
+        .sortable-ghost {
+            opacity: 0.6;
+            background: rgba(56, 189, 248, 0.18);
+            outline: 2px dashed rgba(56, 189, 248, 0.6);
+            outline-offset: -4px;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card {
+            background: #1e293b;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            border: 1px solid #334155;
+        }
+        .tag-item {
+            transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+            cursor: pointer;
+            position: relative; /* For positioning the badge */
+        }
+        .tag-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(56, 189, 248, 0.35);
+        }
+        .tag-item:active {
+            transform: scale(0.96);
+        }
+        .category-btn {
+            transition: all 0.2s ease;
+        }
+        .format-btn {
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            font-weight: 500;
+            border: none;
+        }
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        .btn-secondary {
+            background: #334155;
+            color: #cbd5e1;
+            border: 1px solid #475569;
+        }
+        .btn-secondary:hover {
+            background: #475569;
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #059669;
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+            background-image: linear-gradient(45deg, rgba(255,255,255,0.18) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.18) 75%, transparent 75%, transparent);
+            background-size: 1rem 1rem;
+            animation: stripes 0.8s linear infinite;
+        }
+        @keyframes stripes {
+            from { background-position: 0 0; }
+            to { background-position: 1rem 0; }
+        }
+        .tag-tooltip {
+            position: fixed;
+            background: rgba(2, 6, 23, 0.96);
+            border: 1px solid #334155;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 1000;
+            white-space: pre-line;
+            max-width: 300px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .compact-tag {
+            height: 50px;
+            padding: 0.5rem;
+        }
+        .tag-badge {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.4rem;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #16233a 0%, #1b2a42 100%);
+            border: 1px solid #334155;
+        }
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.4rem 0.5rem;
+            border-bottom: 1px solid #334155;
+        }
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+        .stat-value {
+            font-weight: 600;
+            color: #38bdf8;
+        }
+        .compact-container {
+            gap: 0.75rem;
+        }
+        .selected-tag {
+            position: relative;
+            transition: all 0.2s ease-in-out;
+        }
+        .selected-tag:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+        }
+        .unmatched-tag {
+            background-color: #334155; /* slate-700 */
+            border: 1px dotted #64748b; /* slate-500 */
+            color: #cbd5e1; /* slate-300 */
+            transition: all 0.2s ease-in-out;
+        }
+        .unmatched-tag:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+        }
+
+        /* ===== 动效（克制，只随真实状态变化触发） ===== */
+        .btn-primary, .btn-secondary, .btn-danger, .btn-success, .category-btn, .format-btn,
+        .stat-button, #update-csv-btn, #reload-app-btn, #copy-text-btn, .pagination-btn {
+            transition: background-color 0.18s ease, transform 0.12s ease, box-shadow 0.18s ease,
+                        border-color 0.18s ease, color 0.18s ease;
+        }
+        .btn-primary:active, .btn-secondary:active, .btn-danger:active, .btn-success:active,
+        .category-btn:active, .format-btn:active, .stat-button:active,
+        #update-csv-btn:active, #reload-app-btn:active, #copy-text-btn:active, .pagination-btn:active {
+            transform: scale(0.97);
+        }
+        .tag-item.tag-selected:hover {
+            transform: translateY(-2px) scale(0.95);
+        }
+        .selected-tag, .unmatched-tag {
+            animation: chipIn 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
+        }
+        @keyframes chipIn {
+            from { opacity: 0; transform: scale(0.82); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        #tag-list.fade-in {
+            animation: listFade 0.18s ease-out;
+        }
+        @keyframes listFade {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: none; }
+        }
+        .stat-button span.font-bold {
+            display: inline-block;
+        }
+        .stat-pulse {
+            animation: statPulse 0.45s ease-out;
+        }
+        @keyframes statPulse {
+            0%   { transform: scale(1); color: #38bdf8; }
+            45%  { transform: scale(1.16); color: #7dd3fc; }
+            100% { transform: scale(1); }
+        }
+        #formatted-output.flash {
+            animation: outFlash 0.6s ease-out;
+        }
+        @keyframes outFlash {
+            0%   { box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.5); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        .tag-tooltip {
+            transition: opacity 0.2s ease, transform 0.12s ease;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Tailwind 类名安全清单：确保只在 JS（CATEGORY_MAP）中出现的暗色类别类也会被生成 -->
+    <div style="display:none" aria-hidden="true" class="bg-blue-500/15 text-blue-300 border-blue-500/30 bg-red-500/15 text-red-300 border-red-500/30 bg-purple-500/15 text-purple-300 border-purple-500/30 bg-green-500/15 text-green-300 border-green-500/30 bg-orange-500/15 text-orange-300 border-orange-500/30 bg-pink-500/15 text-pink-300 border-pink-500/30 bg-slate-900/60"></div>
+    <div class="container mx-auto p-4 md:p-5 max-w-[1400px] min-h-screen flex flex-col compact-container">
+        <!-- 紧凑的头部区域 -->
+        <header class="flex justify-between items-center gap-3 p-3 rounded-xl -mt-4">
+            <div class="flex items-center gap-3">
+                <!-- 网站标题 -->
+                <div class="w-8 h-8 rounded-md bg-blue-500 flex items-center justify-center">
+                    <i class="fa-solid fa-tags text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-100">Danbooru 标签助手</h1>
+                    <p class="text-xs text-slate-400">高效管理与组合标签，提升创作效率</p>
+                </div>
+            </div>
+            <div class="flex-grow max-w-md flex items-center gap-2">
+                <!-- 搜索框和重置按钮 -->
+                <div class="relative w-full">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                    <input type="search" id="search-box" placeholder="搜索标签 (英文/中文/别名/分类/备注)..." class="w-full pl-9 pr-3 h-[36px] border border-slate-600 rounded-md focus:outline-none focus:border-transparent focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm">
+                </div>
+                <button id="reset-search-btn" title="重置搜索" class="h-[36px] w-10 flex items-center justify-center rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="flex-shrink-0 flex items-center gap-2">
+                <!-- 更新CSV：从 GitHub 拉取最新数据，页面立即使用，并自动下载同名文件以便覆盖本地 -->
+                <button id="update-csv-btn" title="从 GitHub 下载最新数据：页面立即使用，并自动下载 danbooru_all_2.csv 覆盖到项目目录" class="h-[36px] px-3 text-sm flex items-center justify-center gap-2 rounded-md transition-colors duration-200 bg-emerald-500 text-white hover:bg-emerald-600">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> 更新CSV
+                </button>
+                <button id="reload-app-btn" class="h-[36px] px-3 text-sm flex items-center justify-center gap-2 rounded-md transition-colors duration-200 bg-blue-500 text-white hover:bg-blue-600 hidden">
+                    <i class="fa-solid fa-arrows-rotate"></i> 重新加载
+                </button>
+            </div>
+        </header>
+
+        <!-- 加载区域 -->
+        <div id="load-area-card" class="mb-3 p-3 bg-slate-800 rounded-lg shadow-sm border border-slate-700 space-y-2">
+            <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                    <input type="text" id="csv-url" value="_internal/data/danbooru_all_2.csv" class="w-full px-3 h-[36px] border border-slate-600 rounded-md focus:outline-none focus:border-transparent focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm">
+                    <button id="reset-url-btn" title="恢复默认URL" class="h-[36px] w-10 flex items-center justify-center rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="load-url-btn" class="w-full h-[36px] px-3 text-sm flex items-center justify-center gap-2 rounded-md transition-colors duration-200 bg-blue-500 text-white hover:bg-blue-600">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> 加载网络文件
+                    </button>
+                    <label for="local-file-btn" class="w-full cursor-pointer h-[36px] px-3 text-sm flex items-center justify-center gap-2 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                        <i class="fa-solid fa-folder-open"></i> 选择本地文件
+                    </label>
+                    <input type="file" id="local-file-btn" accept=".csv" class="hidden">
+                </div>
+            </div>
+            <div id="status-area" class="text-center">
+                <div id="progress-container" class="w-full bg-slate-700 rounded-full h-2 my-2">
+                    <div id="progress-bar" class="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-linear w-0"></div>
+                </div>
+                <div id="status-message" class="text-xs min-h-[1rem]">准备加载数据</div>
+            </div>
+        </div>
+
+        <!-- 中间区域 -->
+        <div class="flex-grow grid grid-cols-1 md:grid-cols-3 gap-3">
+
+            <!-- 现在是左栏 -->
+            <div class="md:col-span-2 flex flex-col gap-3">
+                <div class="p-3 bg-slate-800 rounded-lg shadow-sm border border-slate-700 flex flex-col">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-sm font-semibold text-slate-200">已选标签 (<span id="selected-count">0</span>) 个，可拖拽排序、点击取消选择</h2>
+                        <div class="flex items-center gap-1">
+                            <button id="toggle-lang-btn" class="h-7 px-2 text-xs flex items-center justify-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                                <i class="fa-solid fa-language"></i> 切换中英文
+                            </button>
+                            <button id="save-wildcard-btn" class="h-7 px-2 text-xs flex items-center justify-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                                <i class="fa-solid fa-save"></i> 保存为通配符
+                            </button>
+                            <button id="clear-selected-btn" class="h-7 px-2 text-xs flex items-center justify-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                                <i class="fa-solid fa-trash-can"></i> 清空已选
+                            </button>
+                        </div>
+                    </div>
+                    <div id="selected-tags-container" class="flex-grow min-h-[135px] bg-slate-900 rounded-md p-2 flex flex-wrap content-start gap-1 overflow-y-auto">
+                        <div class="flex flex-col items-center justify-center w-full h-full text-slate-500">
+                            <i class="fa-solid fa-tags text-3xl mb-2"></i>
+                            <p class="text-sm">尚未选择任何标签</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 标签列表区域（紧凑布局） -->
+                <div class="bg-slate-800 rounded-lg shadow-sm border border-slate-700 p-3 flex flex-col overflow-hidden">
+                    <!-- 紧凑的分类过滤器 -->
+                    <div id="category-filters" class="flex flex-wrap items-center gap-1 pb-2">
+                        <button id="all-categories" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-globe w-3 text-center"></i><span>全部</span>
+                        </button>
+                        <button data-category="0" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-tag w-3 text-center"></i><span>通用</span>
+                        </button>
+                        <button data-category="1" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-palette w-3 text-center"></i><span>画师</span>
+                        </button>
+                        <button data-category="3" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-copyright w-3 text-center"></i><span>作品</span>
+                        </button>
+                        <button data-category="4" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-user w-3 text-center"></i><span>角色</span>
+                        </button>
+                        <button data-category="5" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-info-circle w-3 text-center"></i><span>元数据</span>
+                        </button>
+                        <button data-category="6" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-cogs w-3 text-center"></i><span>Kontext</span>
+                        </button>
+                    </div>
+                    
+                    <div id="tag-list-container" class="flex-grow overflow-hidden no-scrollbar py-1 p-1 min-h-[410px]">
+                        <div id="tag-list" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-2"></div>
+                    </div>
+                    
+                    <div id="pagination-controls" class="mt-2 pt-2 border-t border-slate-700 flex justify-center items-center gap-2 text-xs"></div>
+                </div>
+
+            </div>
+
+            <!-- 现在是右栏 -->
+            <div class="md:col-span-1 flex flex-col gap-3">
+                <div class="p-3 bg-slate-800 rounded-lg shadow-sm border border-slate-700 flex flex-col">
+                    <!-- 格式化文本展示区域 -->
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-sm font-semibold text-slate-200">格式化文本</h2>
+                        <div id="copy-btn" class="flex items-center gap-1">
+                            <button id="copy-text-btn" class="h-7 px-2 text-xs flex items-center justify-center gap-1 rounded-md transition-colors duration-200 bg-blue-500 text-white hover:bg-blue-600">
+                                <i class="fa-solid fa-copy"></i><span class="hidden sm:inline">复制</span>
+                            </button>
+                        </div>
+                    </div>
+                    <textarea 
+                        id="formatted-output" 
+                        readonly 
+                        class="w-full bg-gray-900 text-green-400 font-mono rounded-md p-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 h-32 no-scrollbar resize-none" 
+                        placeholder="已选标签组合编辑排序后，格式化文本将显示在这里...">
+                    </textarea>
+                    <!-- 格式化按钮区域 -->
+                    <div id="format-controls" class="flex flex-wrap items-center gap-1 pt-2">
+                        <button data-format="comma-space" class="format-btn h-7 px-2 text-xs flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-grip-lines"></i><span class="hidden sm:inline">逗号分隔</span>
+                        </button>
+                        <button data-format="space" class="format-btn h-7 px-2 text-xs flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-grip-lines-vertical"></i><span class="hidden sm:inline">空格分隔</span>
+                        </button>
+                        <button data-format="space-underscore" class="format-btn h-7 px-2 text-xs flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-signature"></i><span class="hidden sm:inline">下划线转空格</span>
+                        </button>
+                        <button data-format="full" class="format-btn h-7 px-2 text-xs flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-asterisk"></i><span class="hidden sm:inline">全格式</span>
+                        </button>
+                    </div>
+
+                </div>
+                
+                <!-- 标签详情区 - 始终显示 -->
+                <div class="min-h-[290px]">
+                    <div id="tag-details-card" class="p-3 rounded-lg bg-slate-800 shadow-sm border border-slate-700">
+                        <h2 class="text-sm font-semibold text-slate-200 mb-2">标签详情</h2>
+                        <div id="tag-details-content" class="text-xs space-y-1">
+                            <p>请点击选择一个标签以查看其详细信息。</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ==================== 出图工作台 ==================== -->
+        <div class="p-3 rounded-lg bg-slate-800 shadow-sm border border-slate-700">
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+                <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-fuchsia-400"></i> 出图工作台
+                    <span class="text-xs font-normal text-slate-500">TagSDanbooru × ComfyUI</span>
+                </h2>
+                <div class="flex items-center gap-2 text-xs">
+                    <span id="wb-dot" class="w-2 h-2 rounded-full bg-slate-500 inline-block"></span>
+                    <span id="wb-status" class="text-slate-400">正在检测…</span>
+                    <button id="wb-refresh" class="h-7 px-2 flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                        <i class="fa-solid fa-rotate"></i> 刷新
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                <!-- 左：提示词 -->
+                <div class="space-y-2">
+                    <div class="flex flex-wrap justify-between items-center gap-1">
+                        <label class="text-xs font-semibold text-slate-300">正向提示词</label>
+                        <div class="flex gap-1">
+                            <button id="wb-fill-tags" class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                                <i class="fa-solid fa-arrow-left"></i> 用已选标签
+                            </button>
+                            <button id="wb-fill-output" class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                                <i class="fa-solid fa-arrow-left"></i> 用格式化文本
+                            </button>
+                            <button id="wb-fill-base" class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                                <i class="fa-solid fa-rotate-left"></i> 还原
+                            </button>
+                        </div>
+                    </div>
+                    <textarea id="wb-positive" rows="5"
+                        class="w-full bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-slate-200 no-scrollbar resize-y focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                        placeholder="1girl, solo, ...（点右上角按钮可从已选标签一键填入）"></textarea>
+
+                    <label class="text-xs font-semibold text-slate-300 block">负面提示词</label>
+                    <textarea id="wb-negative" rows="3"
+                        class="w-full bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-slate-200 no-scrollbar resize-y focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                        placeholder="留空则沿用工作流里的负面词"></textarea>
+                    <p class="text-xs text-slate-500 leading-relaxed" id="wb-hint">
+                        提示词会写入工作流的「特殊要求」节点（自动定位），你的 json 文件不会被修改。
+                    </p>
+                </div>
+                <!-- 右：参数与操作 -->
+                <div class="space-y-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="col-span-2">
+                            <label class="text-xs text-slate-300">模型</label>
+                            <select id="wb-model" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-300">采样器</label>
+                            <select id="wb-sampler" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-300">调度器</label>
+                            <select id="wb-scheduler" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-300">步数 steps</label>
+                            <input id="wb-steps" type="number" min="1" max="150" value="20" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-300">CFG</label>
+                            <input id="wb-cfg" type="number" step="0.5" min="1" max="30" value="6.5" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-300">宽 width</label>
+                            <input id="wb-width" type="number" step="64" min="256" max="2048" value="768" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-300">高 height</label>
+                            <input id="wb-height" type="number" step="64" min="256" max="2048" value="1344" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-300">数量</label>
+                            <input id="wb-count" type="number" min="1" max="50" value="1" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-300">种子 seed</label>
+                            <div class="flex gap-1">
+                                <input id="wb-seed" type="number" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="留空 = 随机">
+                                <button id="wb-dice" title="随机种子" class="h-8 w-9 shrink-0 flex items-center justify-center rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                                    <i class="fa-solid fa-dice"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-300" title="同一批内 seed 的步长：1=连号（相邻 seed 噪声相关，出图容易像同一张的微调）；换成大奇数（如 137111）同批就能拿到差异明显的样本。留空＝1。">种子跨度</label>
+                            <input id="wb-seed-stride" type="number" min="1" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="留空＝1（连号）">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-300" title="同一个系列（同一个主题的反复迭代）的图会收进同一个文件夹，方便对比哪里改好了。留空则按当天日期建文件夹。">系列</label>
+                            <input id="wb-series" type="text" maxlength="40" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="如 OL制服">
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-1 pt-1">
+                        <button id="wb-generate" class="h-8 px-3 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-sky-600 text-white hover:bg-sky-500 font-semibold">
+                            <i class="fa-solid fa-play"></i> 开始出图
+                        </button>
+                        <button id="wb-interrupt" class="h-8 px-3 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-stop"></i> 中断
+                        </button>
+                        <button id="wb-clear" class="h-8 px-3 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-broom"></i> 清空队列
+                        </button>
+                        <button id="wb-free" class="h-8 px-3 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-memory"></i> 释放显存
+                        </button>
+                        <button id="wb-shutdown" title="停止本地服务：ComfyUI、这个页面窗口、终端窗口都会一起收掉"
+                                class="h-8 px-3 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600 ml-auto">
+                            <i class="fa-solid fa-power-off"></i> 关闭服务
+                        </button>
+                    </div>
+
+                    <div class="pt-1">
+                        <div class="flex flex-wrap justify-between gap-2 text-xs text-slate-400 mb-1">
+                            <span id="wb-progress-text">就绪</span>
+                            <span id="wb-run-info" class="text-slate-500"></span>
+                        </div>
+                        <div class="w-full bg-slate-700 rounded-full h-2">
+                            <div id="wb-progress" class="bg-sky-500 h-2 rounded-full transition-all duration-300" style="width:0%"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 结果画廊 -->
+            <div class="mt-3 pt-3 border-t border-slate-700">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                    <span class="text-xs font-semibold text-slate-200">
+                        <i class="fa-solid fa-images text-sky-400"></i> 结果画廊
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-500" id="wb-gallery-info">尚未出图</span>
+                        <button id="wb-reload" title="重新扫描 _internal/output/ 并刷新画廊 —— 新出的图（尤其是命令行练的图）要点这里才会出现"
+                                class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-sky-600 text-white hover:bg-sky-500">
+                            <i class="fa-solid fa-rotate-right"></i> 刷新图片
+                        </button>
+                        <button id="wb-open-dir" title="在资源管理器中打开发图文件夹"
+                                class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-folder-open text-amber-400"></i> 打开文件夹
+                        </button>
+                        <button id="wb-del-run" title="把这一批的全部图片送进回收站（可从回收站还原）"
+                                class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-trash-can text-red-400"></i> 删除这一批
+                        </button>
+                    </div>
+                </div>
+                <div id="wb-seriesbar" class="flex flex-wrap gap-1 mb-2"></div>
+                <div id="wb-runbar" class="flex flex-wrap gap-1 mb-2"></div>
+                <div id="wb-gallery" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2"></div>
+
+                <!-- 灯箱：页面内放大看图，← → 切换，Esc 关闭 -->
+                <div id="wb-lightbox" class="hidden fixed inset-0 z-50 bg-black/85 items-center justify-center">
+                    <img id="wb-lightbox-img" class="max-w-[92vw] max-h-[88vh] object-contain rounded-lg shadow-2xl" alt="">
+                    <div id="wb-lightbox-cap" class="absolute bottom-4 left-0 right-0 text-center text-xs text-slate-300"></div>
+                    <button id="wb-lightbox-prev" title="上一张"
+                            class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button id="wb-lightbox-next" title="下一张"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <button id="wb-lightbox-close" title="关闭 (Esc)"
+                            class="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="p-3 rounded-lg stats-card shadow-sm">
+            <h2 class="text-sm font-semibold text-slate-200 mb-2">标签统计</h2>
+            <div id="stats-buttons-container" class="grid grid-cols-7 gap-2 text-sm"> <!-- grid grid-cols-7 7列一行 -->
+                <button data-category="all" class="stat-button p-2 rounded-md transition-colors duration-200 flex flex-col items-center justify-center bg-slate-700 hover:bg-slate-600 h-16">
+                    <span class="font-bold text-sky-400 text-base">0</span>
+                    <span class="text-xs flex items-center gap-1 mt-1"><i class="fa-solid fa-globe text-slate-400"></i> 全部</span>
+                </button>
+                <button data-category="0" class="stat-button p-2 rounded-md transition-colors duration-200 flex flex-col items-center justify-center bg-slate-700 hover:bg-slate-600 h-16">
+                    <span class="font-bold text-sky-400 text-base">0</span>
+                    <span class="text-xs flex items-center gap-1 mt-1"><i class="fa-solid fa-tag text-sky-400"></i> 通用</span>
+                </button>
+                <button data-category="1" class="stat-button p-2 rounded-md transition-colors duration-200 flex flex-col items-center justify-center bg-slate-700 hover:bg-slate-600 h-16">
+                    <span class="font-bold text-sky-400 text-base">0</span>
+                    <span class="text-xs flex items-center gap-1 mt-1"><i class="fa-solid fa-palette text-red-500"></i> 画师</span>
+                </button>
+                <button data-category="3" class="stat-button p-2 rounded-md transition-colors duration-200 flex flex-col items-center justify-center bg-slate-700 hover:bg-slate-600 h-16">
+                    <span class="font-bold text-sky-400 text-base">0</span>
+                    <span class="text-xs flex items-center gap-1 mt-1"><i class="fa-solid fa-copyright text-purple-500"></i> 作品</span>
+                </button>
+                <button data-category="4" class="stat-button p-2 rounded-md transition-colors duration-200 flex flex-col items-center justify-center bg-slate-700 hover:bg-slate-600 h-16">
+                    <span class="font-bold text-sky-400 text-base">0</span>
+                    <span class="text-xs flex items-center gap-1 mt-1"><i class="fa-solid fa-user text-green-500"></i> 角色</span>
+                </button>
+                <button data-category="5" class="stat-button p-2 rounded-md transition-colors duration-200 flex flex-col items-center justify-center bg-slate-700 hover:bg-slate-600 h-16">
+                    <span class="font-bold text-sky-400 text-base">0</span>
+                    <span class="text-xs flex items-center gap-1 mt-1"><i class="fa-solid fa-info-circle text-orange-500"></i> 元数据</span>
+                </button>
+                <button data-category="6" class="stat-button p-2 rounded-md transition-colors duration-200 flex flex-col items-center justify-center bg-slate-700 hover:bg-slate-600 h-16">
+                    <span class="font-bold text-sky-400 text-base">0</span>
+                    <span class="text-xs flex items-center gap-1 mt-1"><i class="fa-solid fa-cogs text-pink-500"></i> Kontext</span>
+                </button>
+            </div>
+        </div>
+
+        <footer class="text-center mt-auto pt-3 text-xs text-slate-400"></footer>
+    </div>
+
+    <!-- 标签提示工具 -->
+    <div id="tag-tooltip" class="tag-tooltip"></div>
+
+    <script>
+        // 模块化组织代码
+        const TagAssistant = (() => {
+            // 常量定义
+            // 默认数据源：项目内 _internal/data 下的数据文件（推荐用本地服务器打开，或在“选择本地文件”中手动加载）
+            const DEFAULT_URL = '_internal/data/danbooru_all_2.csv';
+            // 网络数据源：本仓库发布的最新快照（“更新CSV”按钮使用）
+            const REMOTE_URL = 'https://raw.githubusercontent.com/s0upderef/TagSDanbooru/refs/heads/main/_internal/data/danbooru_all_2.csv';
+            const TAGS_PER_PAGE = 28;
+            // 热度异常阈值：官方数据里存在少量被人工“提权”的词条（1000 万+），
+            // 会错误地霸占列表最前方；载入时统一按 0 处理，保证排序 / 热度徽章 / 悬停提示三处一致。
+            const MAX_PLAUSIBLE_POP = 10000000;
+            const CATEGORY_MAP = {
+                '0': { name: '通用', icon: 'fa-tag', color: 'blue', bg: 'bg-blue-500/15', text: 'text-blue-300', border: 'border-blue-500/30' },
+                '1': { name: '画师', icon: 'fa-palette', color: 'red', bg: 'bg-red-500/15', text: 'text-red-300', border: 'border-red-500/30' },
+                '3': { name: '作品', icon: 'fa-copyright', color: 'purple', bg: 'bg-purple-500/15', text: 'text-purple-300', border: 'border-purple-500/30' },
+                '4': { name: '角色', icon: 'fa-user', color: 'green', bg: 'bg-green-500/15', text: 'text-green-300', border: 'border-green-500/30' },
+                '5': { name: '元数据', icon: 'fa-info-circle', color: 'orange', bg: 'bg-orange-500/15', text: 'text-orange-300', border: 'border-orange-500/30' },
+                '6': { name: 'Kontext', icon: 'fa-cogs', color: 'pink', bg: 'bg-pink-500/15', text: 'text-pink-300', border: 'border-pink-500/30' }
+            };
+            
+            // DOM元素
+            const elements = {
+                csvUrlInput: document.getElementById('csv-url'),
+                loadUrlBtn: document.getElementById('load-url-btn'),
+                localFileBtn: document.getElementById('local-file-btn'),
+                resetUrlBtn: document.getElementById('reset-url-btn'),
+                searchBox: document.getElementById('search-box'),
+                resetSearchBtn: document.getElementById('reset-search-btn'),
+                categoryFilters: document.getElementById('category-filters'),
+                progressContainer: document.getElementById('progress-container'),
+                progressBar: document.getElementById('progress-bar'),
+                statusMessage: document.getElementById('status-message'),
+                tagList: document.getElementById('tag-list'),
+                tagListContainer: document.getElementById('tag-list-container'),
+                paginationControls: document.getElementById('pagination-controls'),
+                loadAreaCard: document.getElementById('load-area-card'),
+                reloadAppBtn: document.getElementById('reload-app-btn'),
+                selectedTagsContainer: document.getElementById('selected-tags-container'),
+                toggleLangBtn: document.getElementById('toggle-lang-btn'),
+                clearSelectedBtn: document.getElementById('clear-selected-btn'),
+                saveWildcardBtn: document.getElementById('save-wildcard-btn'),
+                formattedOutput: document.getElementById('formatted-output'),
+                formatControls: document.getElementById('format-controls'),
+                copyTextBtn: document.getElementById('copy-text-btn'),
+                selectedCount: document.getElementById('selected-count'),
+                allCategoriesBtn: document.getElementById('all-categories'),
+                tagTooltip: document.getElementById('tag-tooltip'),
+                statsButtonsContainer: document.getElementById('stats-buttons-container'),
+                tagDetailsCard: document.getElementById('tag-details-card'),
+                tagDetailsContent: document.getElementById('tag-details-content'),
+                updateCsvBtn: document.getElementById('update-csv-btn')
+            };
+            
+            // 状态变量
+            let state = {
+                allTags: [],
+                filteredTags: [],
+                selectedTags: [],
+                currentPage: 1,
+                currentCategory: 'all',
+                currentFormat: 'space-underscore',
+                selectedTagsLanguage: 'cn',
+                mainSortable: null,
+                selectedSortable: null,
+                categoryCounts: {
+                    '0': 0,
+                    '1': 0,
+                    '3': 0,
+                    '4': 0,
+                    '5': 0,
+                    '6': 0
+                },
+                tooltipTimeout: null
+            };
+            
+            // 工具函数
+            const utils = {
+                debounce: (func, delay) => {
+                    let timeout;
+                    return function(...args) {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => func.apply(this, args), delay);
+                    };
+                },
+                
+                formatPopularity: (numStr) => {
+                    const num = parseInt(numStr, 10);
+                    if (isNaN(num)) return '0';
+                    if (num >= 1000000) return `${(num / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+                    if (num >= 1000) return `${(num / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+                    return num.toString();
+                },
+                
+                showTooltip: (content, x, y) => {
+                    elements.tagTooltip.textContent = content;
+                    
+                    // 计算最大可显示位置
+                    const maxX = window.innerWidth - elements.tagTooltip.offsetWidth - 20;
+                    const maxY = window.innerHeight - elements.tagTooltip.offsetHeight - 20;
+                    
+                    // 确保提示框不会超出屏幕
+                    const adjustedX = Math.min(x + 10, maxX);
+                    const adjustedY = Math.min(y + 10, maxY);
+                    
+                    elements.tagTooltip.style.left = `${adjustedX}px`;
+                    elements.tagTooltip.style.top = `${adjustedY}px`;
+                    elements.tagTooltip.style.opacity = '1';
+                },
+                
+                hideTooltip: () => {
+                    elements.tagTooltip.style.opacity = '0';
+                },
+                
+                debounceShowTooltip: (content, x, y) => {
+                    // 清除之前的定时器
+                    clearTimeout(state.tooltipTimeout);
+                    
+                    // 设置新的定时器
+                    state.tooltipTimeout = setTimeout(() => {
+                        utils.showTooltip(content, x, y);
+                    }, 300);
+                },
+                
+                cancelShowTooltip: () => {
+                    clearTimeout(state.tooltipTimeout);
+                    utils.hideTooltip();
+                },
+                
+                updateStats: () => {
+                    //if (state.allTags.length === 0) return; //强制清空数据统计
+
+                    // 重置计数
+                    state.categoryCounts = { '0': 0, '1': 0, '3': 0, '4': 0, '5': 0, '6': 0 };
+                    
+                    // 计算每个类别的数量
+                    state.allTags.forEach(tag => {
+                        const catId = tag[1];
+                        if (state.categoryCounts.hasOwnProperty(catId)) {
+                            state.categoryCounts[catId]++;
+                        }
+                    });
+
+                    // 更新UI
+                    const buttons = elements.statsButtonsContainer.querySelectorAll('.stat-button');
+                    buttons.forEach(btn => {
+                        const category = btn.dataset.category;
+                        const countSpan = btn.querySelector('span.font-bold');
+                        let count = 0;
+                        if (category === 'all') {
+                            count = state.allTags.length;
+                        } else if (state.categoryCounts[category]) {
+                            count = state.categoryCounts[category];
+                        }
+                        countSpan.textContent = count.toLocaleString();
+                        // 数字更新脉冲
+                        countSpan.classList.remove('stat-pulse');
+                        void countSpan.offsetWidth;
+                        countSpan.classList.add('stat-pulse');
+                    });
+                }
+            };
+            
+            // 数据加载模块
+            const dataLoader = {
+                loadFile: async (source, options = {}) => {
+                    // 重置状态
+                    state.allTags = [];
+                    state.filteredTags = [];
+                    state.selectedTags = [];
+                    state.currentPage = 1;
+                    
+                    elements.tagList.innerHTML = '';
+                    elements.paginationControls.innerHTML = '';
+                    tagRenderer.renderSelectedTags(); // 确保占位符在加载时正确显示
+                    elements.formattedOutput.value = '';
+                    elements.selectedCount.textContent = '0';
+                    
+                    // 隐藏重新加载按钮
+                    elements.reloadAppBtn.classList.add('hidden');
+                    
+                    // 清除上一次的错误样式
+                    elements.statusMessage.classList.remove('text-red-500');
+                    
+                    if (typeof source === 'string') {
+                        await dataLoader.loadNetworkFile(source, options);
+                    } else {
+                        dataLoader.parseCsvData(source, '本地文件');
+                    }
+                },
+                
+                loadNetworkFile: async (url, options = {}) => {
+                    const { label = '网络文件', downloadAs = null, fallbackUrl = null } = options;
+                    try {
+                        elements.statusMessage.textContent = '正在连接数据源...';
+                        elements.progressBar.style.width = '0%';
+                        
+                        const response = await fetch(url);
+                        
+                        if (!response.ok) {
+                            throw new Error(`网络错误: ${response.status} ${response.statusText}`);
+                        }
+                        
+                        if (!response.body) {
+                            throw new Error('响应中没有数据体');
+                        }
+                        
+                        const contentLength = response.headers.get('content-length');
+                        const totalSize = parseInt(contentLength, 10);
+                        let receivedLength = 0;
+                        const chunks = [];
+                        const reader = response.body.getReader();
+                        
+                        elements.statusMessage.textContent = '正在下载文件...';
+                        
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            
+                            chunks.push(value);
+                            receivedLength += value.length;
+                            
+                            if (totalSize) {
+                                const progress = Math.round((receivedLength / totalSize) * 100);
+                                elements.progressBar.style.width = `${progress}%`;
+                            }
+                        }
+                        
+                        const blob = new Blob(chunks);
+                        
+                        // 若指定了 downloadAs，则额外触发浏览器下载，便于覆盖本地数据文件
+                        let suffix = '';
+                        if (downloadAs) {
+                            const link = document.createElement('a');
+                            link.href = URL.createObjectURL(blob);
+                            link.download = downloadAs;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            setTimeout(() => URL.revokeObjectURL(link.href), 3000);
+                            suffix = ` 已同时下载 ${downloadAs}，可用它覆盖项目内同名文件（长期生效）。`;
+                        }
+                        
+                        dataLoader.parseCsvData(blob, label, { suffix, keepLoadArea: !!downloadAs });
+                    } catch (error) {
+                        // 本地文件读取失败（常见于 file:// 直接打开），自动回退到网络数据源
+                        if (fallbackUrl && fallbackUrl !== url) {
+                            elements.statusMessage.classList.remove('text-red-500');
+                            elements.statusMessage.textContent = '本地数据文件读取失败（file:// 下浏览器禁止直接读取本地文件），已自动改用网络数据...';
+                            return dataLoader.loadNetworkFile(fallbackUrl, { label: '网络文件' });
+                        }
+                        elements.statusMessage.textContent = `加载失败: ${error.message}`;
+                        elements.statusMessage.classList.add('text-red-500');
+                    }
+                },
+                
+                // 归一化异常热度（同时防止“更新CSV”把脏数据带回来）
+                normalizeRow: (row) => {
+                    const pop = parseInt(row[2], 10);
+                    if (!isNaN(pop) && pop >= MAX_PLAUSIBLE_POP) {
+                        row[2] = '0';
+                        state.outlierCount++;
+                    }
+                    return row;
+                },
+
+                parseCsvData: (data, sourceName, options = {}) => {
+                    const startTime = performance.now();
+                    elements.statusMessage.textContent = '开始解析数据...';
+                    state.outlierCount = 0;
+                    
+                    Papa.parse(data, {
+                        header: false,
+                        skipEmptyLines: true,
+                        chunk: (results, parser) => {
+                            // 归一化异常热度（同时防止“更新CSV”把脏数据带回来）
+                            const rows = results.data.map(row => dataLoader.normalizeRow(row));
+                            state.allTags = state.allTags.concat(rows);
+                            const rowCount = state.allTags.length;
+                            const progress = Math.min((rowCount / 160000) * 100, 100);
+                            elements.progressBar.style.width = `${progress}%`;
+                            elements.statusMessage.textContent = `已解析 ${rowCount.toLocaleString()} 行...`;
+                        },
+                        complete: () => {
+                            // 排序: 按热度从高到低
+                            state.allTags.sort((a, b) => (parseInt(b[2], 10) || 0) - (parseInt(a[2], 10) || 0));
+                            
+                            const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+                            elements.progressBar.style.width = '100%';
+                            
+                            tagManager.applyFilters();
+                            utils.updateStats();
+                            
+                            const outlierNote = state.outlierCount ? `（已自动修正 ${state.outlierCount.toLocaleString()} 条异常热度）` : '';
+                            const finalMessage = `${sourceName}加载完成！共 ${state.allTags.length.toLocaleString()} 个标签，耗时 ${duration} 秒。${outlierNote}${options.suffix || ''}`;
+                            elements.statusMessage.textContent = finalMessage;
+                            
+                            if (options.keepLoadArea) {
+                                // 更新CSV流程：保留加载区，便于查看结果与提示
+                                elements.reloadAppBtn.classList.remove('hidden'); // 加载完成后显示重新加载按钮
+                            } else {
+                                // 加载完立即隐藏加载区（不再等待 2 秒）
+                                elements.loadAreaCard.classList.add('hidden');
+                                elements.reloadAppBtn.classList.remove('hidden'); // 加载完成后显示重新加载按钮
+                            }
+                            
+                            // 初始化拖拽排序
+                            initSortable();
+                            
+                            // 显示重新加载按钮
+                            // elements.reloadAppBtn.classList.remove('hidden');
+                        },
+                        error: (error) => {
+                            elements.statusMessage.textContent = `解析失败: ${error.message}`;
+                            elements.statusMessage.classList.add('text-red-500');
+                            
+                            // 显示重新加载按钮
+                            elements.reloadAppBtn.classList.remove('hidden');
+                        }
+                    });
+                },
+                
+                // 快路径：服务端预转好的 JSON。
+                // JSON.parse 由引擎原生实现，比逐字符解析 CSV 快两个数量级。
+                parseTagJson: (rows, sourceName, options = {}) => {
+                    const startTime = performance.now();
+                    elements.statusMessage.textContent = '正在载入标签数据...';
+                    state.outlierCount = 0;
+                    const tags = new Array(rows.length);
+                    for (let i = 0; i < rows.length; i++) {
+                        tags[i] = dataLoader.normalizeRow(rows[i]);
+                    }
+                    // 排序: 按热度从高到低（与 CSV 路径保持一致）
+                    tags.sort((a, b) => (parseInt(b[2], 10) || 0) - (parseInt(a[2], 10) || 0));
+                    state.allTags = tags;
+
+                    tagManager.applyFilters();
+                    utils.updateStats();
+
+                    const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+                    elements.progressBar.style.width = '100%';
+                    const outlierNote = state.outlierCount ? `（已自动修正 ${state.outlierCount.toLocaleString()} 条异常热度）` : '';
+                    elements.statusMessage.textContent = `${sourceName}加载完成！共 ${state.allTags.length.toLocaleString()} 个标签，耗时 ${duration} 秒。${outlierNote}${options.suffix || ''}`;
+
+                    // 加载完立即隐藏加载区
+                    elements.loadAreaCard.classList.add('hidden');
+                    elements.reloadAppBtn.classList.remove('hidden');
+                    initSortable();
+                },
+
+                // 开页面立刻加载：优先用服务端预转的 JSON，拿不到就回退 CSV 路径。
+                // 直接以 file:// 打开页面时 /local/status 不可用，自动走回退分支。
+                loadDefault: async () => {
+                    let meta = null;
+                    try {
+                        const r = await fetch('/local/status', { cache: 'no-store' });
+                        if (r.ok) meta = (await r.json()).tag_data || null;
+                    } catch (err) { /* 本地服务不可用时静默回退 */ }
+
+                    if (meta && meta.format === 'json' && meta.exists) {
+                        try {
+                            elements.statusMessage.textContent = meta.rows
+                                ? `正在载入 ${meta.rows.toLocaleString()} 条标签（JSON 缓存）...`
+                                : '正在载入标签数据...';
+                            elements.progressBar.style.width = '35%';
+                            const resp = await fetch(meta.url);
+                            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                            const rows = await resp.json();
+                            dataLoader.parseTagJson(rows, '本地标签数据', {});
+                            return;
+                        } catch (err) {
+                            elements.statusMessage.classList.remove('text-red-500');
+                        }
+                    }
+                    dataLoader.loadFile(DEFAULT_URL, { label: '本地数据文件', fallbackUrl: REMOTE_URL });
+                }
+            };
+            
+            // 标签渲染模块
+            const tagRenderer = {
+                renderTagList: () => {
+                    elements.tagList.innerHTML = '';
+                    
+                    const startIndex = (state.currentPage - 1) * TAGS_PER_PAGE;
+                    const endIndex = Math.min(startIndex + TAGS_PER_PAGE, state.filteredTags.length);
+                    const visibleTags = state.filteredTags.slice(startIndex, endIndex);
+                    
+                    if (visibleTags.length === 0) {
+                        elements.tagList.innerHTML = `
+                            <div class="col-span-full text-center py-10 text-slate-400">
+                                <i class="fa-solid fa-inbox text-3xl mb-3"></i>
+                                <p class="text-base">没有找到匹配的标签</p>
+                                <p class="mt-1 text-sm">尝试修改搜索条件或选择其他分类</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    visibleTags.forEach(tag => {
+                        const [enTag, catId, pop, alias, cnTag, l1, l2, notes] = tag;
+                        const isSelected = state.selectedTags.some(t => t[0] === enTag);
+                        const category = CATEGORY_MAP[catId] || CATEGORY_MAP['0'];
+                        
+                        // 创建标签详细信息（用于悬停提示）
+                        const details = [
+                            `英文: ${enTag || 'N/A'}`,
+                            `中文: ${cnTag || '无'}`,
+                            `别名: ${alias || '无'}`,
+                            `热度: ${pop || '0'}`,
+                            `类别: ${category.name}`,
+                            `一级分类: ${l1 || '无'}`,
+                            `二级分类: ${l2 || '无'}`,
+                            `备注: ${notes || '无'}`
+                        ].join('\n');
+                        
+                        const tagEl = document.createElement('div');
+                        tagEl.className = `tag-item compact-tag p-2 rounded-md flex items-center justify-between ${category.bg} ${category.text} hover:ring-1 hover:ring-offset-1 hover:ring-${category.color}-400 text-sm ${isSelected ? 'tag-selected' : ''}`;
+                        tagEl.innerHTML = `
+                            <div class="flex items-center overflow-hidden mr-2">
+                                <i class="fa-solid ${category.icon} w-3 text-center mr-2"></i>
+                                <div class="overflow-hidden">
+                                    <p class="font-semibold truncate text-xs">${cnTag || enTag}</p>
+                                    ${cnTag ? `<p class="text-2xs ${category.text} opacity-80 truncate">${enTag}</p>` : ''}
+                                </div>
+                            </div>
+                            <div class="text-2xs font-mono bg-slate-900/60 px-1 py-0.5 rounded tag-badge">${utils.formatPopularity(pop)}</div>
+                        `;
+                        
+                        tagEl.dataset.enTag = enTag;
+                        tagEl.dataset.details = details;
+                        
+                        // 添加悬停提示
+                        tagEl.addEventListener('mouseenter', (e) => {
+                            utils.debounceShowTooltip(details, e.clientX, e.clientY);
+                        });
+                        
+                        tagEl.addEventListener('mouseleave', () => {
+                            utils.cancelShowTooltip();
+                        });
+                        
+                        tagEl.addEventListener('click', () => {
+                            tagManager.toggleTagSelection(tag, tagEl);
+                            tagDetails.update(tag);
+                        });
+                        
+                        elements.tagList.appendChild(tagEl);
+                    });
+                    
+                    // 列表刷新动效
+                    elements.tagList.classList.remove('fade-in');
+                    void elements.tagList.offsetWidth;
+                    elements.tagList.classList.add('fade-in');
+                    
+                    tagRenderer.renderPagination();
+                },
+                
+                renderSelectedTags: () => {
+                    elements.selectedTagsContainer.innerHTML = '';
+                    elements.selectedCount.textContent = state.selectedTags.length;
+                    
+                    if (state.selectedTags.length === 0) {
+                        elements.selectedTagsContainer.innerHTML = `
+                            <div class="flex flex-col items-center justify-center w-full h-full text-slate-500 p-4 text-center">
+                                <i class="fa-solid fa-hand-pointer text-3xl mb-2"></i>
+                                <p class="text-sm font-semibold">这里是已选标签区</p>
+                                <p class="text-xs mt-1">您可以从下方的“标签列表”点击添加标签，或在左侧“格式化文本”区粘贴并解析您的提示词。</p>
+                            </div>
+                        `;
+                        
+                        // 修复：清空已选标签时更新格式化输出
+                        formatter.updateFormattedOutput();
+                        return;
+                    }
+                    
+                    state.selectedTags.forEach(tag => {
+                        const isUnmatched = !tag[1]; // 未匹配的标签没有类别ID
+                        const enTag = tag[0];
+                        
+                        let displayText, category, details, tagElClass;
+
+                        if (isUnmatched) {
+                            displayText = enTag;
+                            details = `未匹配标签: ${enTag}`;
+                            tagElClass = `unmatched-tag h-[32px] px-2 flex items-center justify-between gap-1 rounded-md shadow-sm border min-w-[60px] max-w-[180px] text-xs font-bold`;
+                        } else {
+                            const [_, catId, pop, alias, cnTag, l1, l2, notes] = tag;
+                            displayText = state.selectedTagsLanguage === 'cn' ? (cnTag || enTag) : enTag;
+                            category = CATEGORY_MAP[catId] || CATEGORY_MAP['0'];
+                            details = [
+                                `英文: ${enTag || 'N/A'}`,
+                                `中文: ${cnTag || '无'}`,
+                                `别名: ${alias || '无'}`,
+                                `热度: ${pop || '0'}`,
+                                `类别: ${category.name}`,
+                                `一级分类: ${l1 || '无'}`,
+                                `二级分类: ${l2 || '无'}`,
+                                `备注: ${notes || '无'}`
+                            ].join('\n');
+                            tagElClass = `selected-tag h-[32px] px-2 flex items-center justify-between gap-1 rounded-md shadow-sm border ${category.border} ${category.bg} ${category.text} min-w-[60px] max-w-[180px] text-xs font-bold`;
+                        }
+                        
+                        const tagEl = document.createElement('div');
+                        tagEl.className = tagElClass;
+                        tagEl.innerHTML = `
+                            <span class="truncate">${displayText}</span>
+                            <button class="remove-selected-tag-btn font-bold text-lg leading-none ${isUnmatched ? 'text-red-400' : `text-${category.color}-500 hover:text-${category.color}-700`}">×</button>
+                        `;
+                        
+                        tagEl.dataset.enTag = enTag;
+                        tagEl.dataset.details = details;
+                        
+                        // 添加悬停提示
+                        tagEl.addEventListener('mouseenter', (e) => {
+                            utils.debounceShowTooltip(details, e.clientX, e.clientY);
+                        });
+                        
+                        tagEl.addEventListener('mouseleave', () => {
+                            utils.cancelShowTooltip();
+                        });
+                        
+                        tagEl.addEventListener('click', (e) => {
+                            // 确保不是点击删除按钮
+                            if (!e.target.closest('.remove-selected-tag-btn')) {
+                                tagDetails.update(tag);
+                            }
+                        });
+                        
+                        tagEl.querySelector('.remove-selected-tag-btn').addEventListener('click', e => { 
+                            e.stopPropagation(); 
+                            const mainListEl = findTagElementInMainList(enTag);
+                            tagManager.toggleTagSelection(tag, mainListEl);
+                        });
+                        
+                        elements.selectedTagsContainer.appendChild(tagEl);
+                    });
+                    
+                    formatter.updateFormattedOutput();
+                },
+                
+                renderPagination: () => {
+                    elements.paginationControls.innerHTML = '';
+                    const totalPages = Math.ceil(state.filteredTags.length / TAGS_PER_PAGE);
+                    
+                    if (totalPages <= 1) return;
+                    
+                    const createButton = (icon, page, disabled = false) => {
+                        const button = document.createElement('button');
+                        button.className = `pagination-btn px-2 py-1 bg-slate-800 border border-slate-600 rounded-md hover:bg-slate-900 transition-colors text-xs ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`;
+                        button.innerHTML = `<i class="fa-solid ${icon}"></i>`;
+                        button.disabled = disabled;
+                        button.dataset.page = page;
+                        return button;
+                    };
+                    
+                    elements.paginationControls.appendChild(createButton('fa-angles-left', 1, state.currentPage === 1));
+                    elements.paginationControls.appendChild(createButton('fa-angle-left', state.currentPage - 1, state.currentPage === 1));
+                    
+                    const pageInfo = document.createElement('span');
+                    pageInfo.className = 'px-2 text-slate-300 text-xs';
+                    pageInfo.textContent = `第 ${state.currentPage} / ${totalPages} 页`;
+                    elements.paginationControls.appendChild(pageInfo);
+                    
+                    elements.paginationControls.appendChild(createButton('fa-angle-right', state.currentPage + 1, state.currentPage === totalPages));
+                    elements.paginationControls.appendChild(createButton('fa-angles-right', totalPages, state.currentPage === totalPages));
+                }
+            };
+            
+            // 标签管理模块
+            const tagManager = {
+                toggleTagSelection: (tag, element) => {
+                    const enTag = tag[0];
+                    const index = state.selectedTags.findIndex(t => t[0] === enTag);
+                    
+                    if (index > -1) {
+                        state.selectedTags.splice(index, 1);
+                        if (element) element.classList.remove('tag-selected');
+                    } else {
+                        state.selectedTags.push(tag);
+                        if (element) element.classList.add('tag-selected');
+                    }
+                    
+                    tagRenderer.renderSelectedTags();
+                },
+                
+                clearSelectedTags: () => {
+                    state.selectedTags = [];
+                    document.querySelectorAll('.tag-item').forEach(el => {
+                        el.classList.remove('tag-selected');
+                    });
+                    tagRenderer.renderSelectedTags();
+                    tagDetails.update();
+                },
+                
+                applyFilters: () => {
+                    const query = elements.searchBox.value.toLowerCase().trim();
+                    
+                    state.filteredTags = state.allTags.filter(tag => {
+                        // 按类别过滤
+                        if (state.currentCategory !== 'all' && tag[1] !== state.currentCategory) {
+                            return false;
+                        }
+                        
+                        // 按搜索词过滤
+                        if (query) {
+                            const searchText = `${tag[0]} ${tag[4]} ${tag[3]} ${tag[1]} ${tag[5]} ${tag[6]} ${tag[7]}`.toLowerCase();
+                            return searchText.includes(query);
+                        }
+                        
+                        return true;
+                    });
+                    
+                    state.currentPage = 1;
+                    tagRenderer.renderTagList();
+                }
+            };
+
+            // 标签详情模块
+            const tagDetails = {
+                update: (tag) => {  // 重命名 show 为 update
+                    if (!tag) {
+                        elements.tagDetailsContent.innerHTML = '<p>请点击选择一个标签以查看其详细信息。</p>';
+                        return;
+                    }
+                    const [enTag, catId, pop, alias, cnTag, l1, l2, notes] = tag;
+                    const category = CATEGORY_MAP[catId] || CATEGORY_MAP['0'];
+
+                    const detailsHtml = `
+                        <p><strong>英文:</strong> <span class="font-mono text-sky-400">${enTag || 'N/A'}</span></p>
+                        <p><strong>中文:</strong> ${cnTag || '无'}</p>
+                        <p><strong>类别:</strong> <span class="font-semibold" style="color: ${category.color}">${category.name}</span></p>
+                        <p><strong>热度:</strong> ${pop ? parseInt(pop).toLocaleString() : '0'}</p>
+                        <p><strong>别名:</strong> ${alias || '无'}</p>
+                        <p><strong>一级分类:</strong> ${l1 || '无'}</p>
+                        <p><strong>二级分类:</strong> ${l2 || '无'}</p>
+                        <p><strong>备注:</strong> ${notes || '无'}</p>
+                    `;
+
+                    elements.tagDetailsContent.innerHTML = detailsHtml;
+                }
+            };
+            
+            // 格式化模块
+            const formatter = {
+                updateFormattedOutput: () => {
+                    let output = '';
+                    const tags = state.selectedTags.map(row => row[0]);
+                    
+                    switch(state.currentFormat) {
+                        case 'comma-space':
+                            output = tags.join(', ');
+                            break;
+                        case 'space':
+                            output = tags.join(' ');
+                            break;
+                        case 'space-underscore':
+                            output = tags.map(tag => tag.replace(/_/g, ' ')).join(', ');
+                            break;
+                        case 'full':
+                            output = tags.map(tag => `(${tag.replace(/_/g, ' ')}:1.1)`).join(', ');
+                            break;
+                    }
+                    
+                    const changed = elements.formattedOutput.value !== output;
+                    elements.formattedOutput.value = output;
+                    if (changed) {
+                        // 内容变化时轻微闪一下
+                        elements.formattedOutput.classList.remove('flash');
+                        void elements.formattedOutput.offsetWidth;
+                        elements.formattedOutput.classList.add('flash');
+                    }
+                },
+                
+                copyToClipboard: () => {
+                    if (!elements.formattedOutput.value) return;
+                    
+                    elements.formattedOutput.select();
+                    navigator.clipboard.writeText(elements.formattedOutput.value).then(() => {
+                        const originalText = '复制';
+                        elements.copyTextBtn.innerHTML = `<i class="fa-solid fa-check"></i><span class="hidden sm:inline">已复制!</span>`;
+                        elements.copyTextBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+                        elements.copyTextBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                        
+                        setTimeout(() => {
+                            elements.copyTextBtn.innerHTML = `<i class="fa-solid fa-copy"></i><span class="hidden sm:inline">${originalText}</span>`;
+                            elements.copyTextBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                            elements.copyTextBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                        }, 2000);
+                    });
+                },
+                
+                saveAsWildcard: () => {
+                    if (state.selectedTags.length === 0) return;
+                    
+                    const content = state.selectedTags.map(tag => tag[0]).join('\n');
+                    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                    const link = document.createElement('a');
+                    
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'danbooru_tags.txt';
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+                }
+            };
+            
+            // 初始化拖拽排序
+            const initSortable = () => {
+                if (typeof Sortable === 'undefined') return;
+                
+                // 主标签列表
+                state.mainSortable = new Sortable(elements.tagList, {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    group: 'shared'
+                });
+                
+                // 已选标签列表
+                state.selectedSortable = new Sortable(elements.selectedTagsContainer, {
+                    animation: 150,
+                    group: 'shared',
+                    onEnd: (evt) => {
+                        const newOrder = Array.from(evt.to.children).map(el => {
+                            const enTag = el.dataset.enTag;
+                            return state.selectedTags.find(tag => tag[0] === enTag);
+                        }).filter(tag => tag);
+                        
+                        state.selectedTags = newOrder;
+                        tagRenderer.renderSelectedTags();
+                    }
+                });
+            };
+            
+            // 辅助函数
+            const findTagElementInMainList = (enTag) => {
+                return elements.tagList.querySelector(`[data-en-tag="${enTag}"]`);
+            };
+            
+            const updateCategoryButtonStyles = () => {
+                elements.categoryFilters.querySelectorAll('button').forEach(btn => {
+                    btn.classList.remove('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+                    btn.classList.add('bg-slate-700', 'text-slate-200', 'hover:bg-slate-600');
+                    
+                    if ((btn === elements.allCategoriesBtn && state.currentCategory === 'all') || 
+                        btn.dataset.category === state.currentCategory) {
+                        btn.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+                        btn.classList.remove('bg-slate-700', 'text-slate-200', 'hover:bg-slate-600');
+                    }
+                });
+            };
+            
+            const updateFormatButtonStyles = () => {
+                elements.formatControls.querySelectorAll('.format-btn').forEach(btn => {
+                    btn.classList.remove('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+                    btn.classList.add('bg-slate-700', 'text-slate-200', 'hover:bg-slate-600');
+                    
+                    if (btn.dataset.format === state.currentFormat) {
+                        btn.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+                        btn.classList.remove('bg-slate-700', 'text-slate-200', 'hover:bg-slate-600');
+                    }
+                });
+            };
+            
+            // 事件处理模块
+            const eventHandler = {
+                init: () => {
+                    // 搜索框事件
+                    elements.searchBox.addEventListener('input', utils.debounce(() => {
+                        tagManager.applyFilters();
+                    }, 300));
+                    
+                    // 重置搜索按钮
+                    elements.resetSearchBtn.addEventListener('click', () => {
+                        elements.searchBox.value = '';
+                        state.currentCategory = 'all';
+                        updateCategoryButtonStyles();
+                        tagManager.applyFilters();
+                    });
+                    
+                    // 分类过滤事件
+                    elements.categoryFilters.addEventListener('click', e => {
+                        const btn = e.target.closest('button');
+                        if (!btn) return;
+                        
+                        if (btn === elements.allCategoriesBtn) {
+                            state.currentCategory = 'all';
+                        } else if (btn.dataset.category) {
+                            state.currentCategory = btn.dataset.category;
+                        }
+                        
+                        updateCategoryButtonStyles();
+                        tagManager.applyFilters();
+                    });
+
+                    // 统计按钮事件
+                    elements.statsButtonsContainer.addEventListener('click', e => {
+                        const btn = e.target.closest('.stat-button');
+                        if (!btn) return;
+
+                        const category = btn.dataset.category;
+                        state.currentCategory = category;
+                        
+                        updateCategoryButtonStyles();
+                        tagManager.applyFilters();
+                    });
+                    
+                    // 格式化按钮事件
+                    elements.formatControls.addEventListener('click', e => {
+                        const btn = e.target.closest('.format-btn');
+                        if (!btn) return;
+                        
+                        state.currentFormat = btn.dataset.format;
+                        updateFormatButtonStyles();
+                        formatter.updateFormattedOutput();
+                    });
+                    
+                    // 按钮事件
+                    elements.loadUrlBtn.addEventListener('click', () => {
+                        const url = elements.csvUrlInput.value.trim() || DEFAULT_URL;
+                        dataLoader.loadFile(url);
+                    });                     
+                    
+                    elements.localFileBtn.addEventListener('change', (e) => {
+                        if (e.target.files.length > 0) {
+                            // 直接加载选中的文件
+                            dataLoader.loadFile(e.target.files[0]);
+                            // 修复：重置文件输入，允许再次选择同一文件
+                            e.target.value = '';
+                        }
+                    });
+                    
+                    elements.resetUrlBtn.addEventListener('click', () => {
+                        elements.csvUrlInput.value = DEFAULT_URL;
+                    });
+                    
+                    // 更新CSV：从 GitHub 拉取最新数据，页面立即使用，并自动下载以供覆盖本地文件
+                    elements.updateCsvBtn.addEventListener('click', () => {
+                        elements.csvUrlInput.value = REMOTE_URL;
+                        // 展开加载区，便于查看下载/解析进度与结果
+                        elements.loadAreaCard.classList.remove('hidden');
+                        dataLoader.loadFile(REMOTE_URL, { label: '网络最新数据', downloadAs: 'danbooru_all_2.csv' });
+                    });
+                    
+                    elements.toggleLangBtn.addEventListener('click', () => {
+                        state.selectedTagsLanguage = state.selectedTagsLanguage === 'cn' ? 'en' : 'cn';
+                        tagRenderer.renderSelectedTags();
+                    });
+                    
+                    elements.clearSelectedBtn.addEventListener('click', tagManager.clearSelectedTags);
+                    elements.copyTextBtn.addEventListener('click', formatter.copyToClipboard);
+                    elements.saveWildcardBtn.addEventListener('click', formatter.saveAsWildcard);
+                    
+                    elements.reloadAppBtn.addEventListener('click', () => {
+                        // 重置应用
+                        state = {
+                            allTags: [],
+                            filteredTags: [],
+                            selectedTags: [],
+                            currentPage: 1,
+                            currentCategory: 'all',
+                            currentFormat: 'space-underscore',
+                            selectedTagsLanguage: 'cn',
+                            categoryCounts: {
+                                '0': 0,
+                                '1': 0,
+                                '3': 0,
+                                '4': 0,
+                                '5': 0,
+                                '6': 0
+                            },
+                            tooltipTimeout: null
+                        };
+                        
+                        elements.selectedCount.textContent = '0';
+                        elements.formattedOutput.value = '';
+                        elements.searchBox.value = '';
+                        elements.tagList.innerHTML = '';
+                        elements.paginationControls.innerHTML = '';
+                        elements.selectedTagsContainer.innerHTML = '';
+                        
+                        // 更新统计区域、更新统计区域
+                        updateCategoryButtonStyles();
+                        utils.updateStats();
+                        tagDetails.update();
+                        
+                        // 显示加载区
+                        elements.loadAreaCard.classList.remove('hidden');
+                        elements.progressBar.style.width = '0%';
+                        elements.statusMessage.textContent = '准备加载数据...';
+                        
+                        // 隐藏重新加载按钮
+                        elements.reloadAppBtn.classList.add('hidden');
+                        
+                        dataLoader.loadDefault();
+                    });
+                    
+                    // 分页事件
+                    elements.paginationControls.addEventListener('click', e => {
+                        const btn = e.target.closest('.pagination-btn');
+                        if (!btn || btn.disabled) return;
+                        
+                        state.currentPage = Number(btn.dataset.page);
+                        tagRenderer.renderTagList();
+                    });
+                    
+                    // 头部滚动时加深投影
+                    const headerEl = document.querySelector('header');
+                    const onScroll = () => {
+                        if (!headerEl) return;
+                        if (window.scrollY > 8) headerEl.classList.add('scrolled');
+                        else headerEl.classList.remove('scrolled');
+                    };
+                    window.addEventListener('scroll', onScroll, { passive: true });
+                    onScroll();
+                    
+                    // 初始选择默认按钮
+                    updateFormatButtonStyles();
+                    updateCategoryButtonStyles();
+                    
+                    // 鼠标移动时更新提示位置
+                    document.addEventListener('mousemove', (e) => {
+                        if (elements.tagTooltip.style.opacity === '1') {
+                            utils.showTooltip(elements.tagTooltip.textContent, e.clientX, e.clientY);
+                        }
+                    });
+                    
+                    dataLoader.loadDefault();
+                }
+            };
+            
+            // 公开方法
+            return {
+                init: () => {
+                    eventHandler.init();
+                }
+            };
+        })();
+        
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', () => {
+            TagAssistant.init();
+        });
+    </script>
+    <!-- ==================== 出图工作台脚本（TagSDanbooru × ComfyUI） ==================== -->
+    <script>
+    (function () {
+        'use strict';
+        const $ = (id) => document.getElementById(id);
+        const E = {
+            dot: $('wb-dot'), status: $('wb-status'), refresh: $('wb-refresh'),
+            positive: $('wb-positive'), negative: $('wb-negative'),
+            fillTags: $('wb-fill-tags'), fillOutput: $('wb-fill-output'), fillBase: $('wb-fill-base'),
+            model: $('wb-model'), sampler: $('wb-sampler'), scheduler: $('wb-scheduler'),
+            steps: $('wb-steps'), cfg: $('wb-cfg'), width: $('wb-width'), height: $('wb-height'),
+            count: $('wb-count'), seed: $('wb-seed'), seedStride: $('wb-seed-stride'), dice: $('wb-dice'), series: $('wb-series'),
+            generate: $('wb-generate'), interrupt: $('wb-interrupt'), clear: $('wb-clear'), free: $('wb-free'),
+            shutdown: $('wb-shutdown'),
+            progress: $('wb-progress'), progressText: $('wb-progress-text'), runInfo: $('wb-run-info'),
+            gallery: $('wb-gallery'), galleryInfo: $('wb-gallery-info'),
+            seriesbar: $('wb-seriesbar'), runbar: $('wb-runbar'),
+            openDir: $('wb-open-dir'), delRun: $('wb-del-run'), reload: $('wb-reload'),
+            lightbox: $('wb-lightbox'), lightboxImg: $('wb-lightbox-img'),
+            lightboxCap: $('wb-lightbox-cap'), lightboxPrev: $('wb-lightbox-prev'),
+            lightboxNext: $('wb-lightbox-next'), lightboxClose: $('wb-lightbox-close')
+        };
+        if (!E.gallery) return;
+
+        let pollTimer = null, busy = false, defaults = null, wfDefaultsApplied = false, connOk = false;
+
+        const api = {
+            get: async (url) => {
+                const r = await fetch(url, { cache: 'no-store' });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            },
+            post: async (url, body) => {
+                const r = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: body ? JSON.stringify(body) : null
+                });
+                return r.json().catch(() => ({ ok: r.ok }));
+            }
+        };
+
+        function setConn(state, text) {
+            connOk = (state === true);
+            const color = state === true ? 'bg-emerald-400' : (state === false ? 'bg-red-500' : 'bg-slate-500');
+            E.dot.className = 'w-2 h-2 rounded-full inline-block ' + color;
+            E.status.className = 'text-xs ' + (state === true ? 'text-emerald-400' : 'text-slate-400');
+            E.status.textContent = text;
+        }
+
+        // 推荐组合：只在下拉文字后面挂个提示，**绝不改动你选的值**
+        const RECOMMENDED = {
+            sampler: {
+                'dpmpp_3m_sde': '实测最干净 · 推荐',
+                'dpmpp_2m_sde': '细节更锐 · 次选',
+                'dpmpp_2m': '稳 · 工作流默认'
+            },
+            scheduler: {
+                'karras': '通用 · 推荐',
+                'sgm_uniform': '偏软 · 次选'
+            }
+        };
+
+        // 下拉框是否还没填上（空，或只有那个占位项）
+        function needsFill(select) {
+            return !select.options.length ||
+                   (select.options.length === 1 && select.options[0].value === '');
+        }
+
+        function fillSelect(select, values, preferred, recommended) {
+            const prev = preferred || select.value;
+            select.innerHTML = '';
+            const list = values || [];
+            if (!list.length) {
+                // 占位提示：避免一片空白看不出状态（ComfyUI 就绪后 ping() 会自动补上）
+                const o = document.createElement('option');
+                o.value = '';
+                o.textContent = '（ComfyUI 启动中…）';
+                o.disabled = true;
+                o.selected = true;
+                select.appendChild(o);
+                return;
+            }
+            list.forEach(v => {
+                const o = document.createElement('option');
+                o.value = v;
+                const hint = recommended && recommended[v];
+                o.textContent = hint ? (v + '  ★ ' + hint) : v;
+                if (hint) o.title = hint;
+                if (v === prev) o.selected = true;
+                select.appendChild(o);
+            });
+            if (!list.includes(prev)) select.selectedIndex = 0;
+        }
+
+        function preferredModel() {
+            return E.model.value || (defaults && defaults.model && defaults.model.value) || '';
+        }
+
+        // 启动中的状态栏摘要：把已经读到的工作流默认值显示出来（也是"绕过早退"的可见证据）
+        function wfSummary() {
+            const d = defaults || {};
+            const s = d.sampler || {}, l = d.latent || {};
+            const bits = [];
+            if (s.steps != null) bits.push(s.steps + ' 步');
+            if (s.cfg != null) bits.push('CFG ' + s.cfg);
+            if (l.width && l.height) bits.push(l.width + '×' + l.height);
+            if (s.sampler_name) bits.push(s.sampler_name);
+            return bits.length ? bits.join(' / ') : '';
+        }
+
+        async function loadEnums() {
+            try {
+                const info = await api.get('/api/object_info/KSampler');
+                const req = info.KSampler.input.required;
+                const d = (defaults && defaults.sampler) || {};
+                // 预选项优先取工作流里的值，消除「先填哪个」的顺序依赖
+                const prefSampler = E.sampler.value || d.sampler_name || 'dpmpp_2m';
+                const prefSched = E.scheduler.value || d.scheduler || 'karras';
+                fillSelect(E.sampler, req.sampler_name[0], prefSampler, RECOMMENDED.sampler);
+                fillSelect(E.scheduler, req.scheduler[0], prefSched, RECOMMENDED.scheduler);
+            } catch (err) {
+                // ComfyUI 还没起来：显示占位，交给 ping() 重试
+                if (needsFill(E.sampler)) fillSelect(E.sampler, [], '', RECOMMENDED.sampler);
+                if (needsFill(E.scheduler)) fillSelect(E.scheduler, [], '', RECOMMENDED.scheduler);
+            }
+        }
+
+        async function loadWorkflow(force) {
+            if (wfDefaultsApplied && !force) return;
+            try {
+                const wf = await api.get('/local/workflow');
+                if (!wf.ok) return;
+                const n = wf.nodes || {};
+                defaults = n;
+                if (n.model && n.model.value) {
+                    if (Array.from(E.model.options).some(o => o.value === n.model.value)) {
+                        E.model.value = n.model.value;
+                    }
+                }
+                if (n.sampler) {
+                    if (n.sampler.steps != null) E.steps.value = n.sampler.steps;
+                    if (n.sampler.cfg != null) E.cfg.value = n.sampler.cfg;
+                    if (n.sampler.sampler_name) E.sampler.value = n.sampler.sampler_name;
+                    if (n.sampler.scheduler) E.scheduler.value = n.sampler.scheduler;
+                }
+                if (n.latent) {
+                    if (n.latent.width) E.width.value = n.latent.width;
+                    if (n.latent.height) E.height.value = n.latent.height;
+                }
+                if (n.negative && n.negative.text) E.negative.value = n.negative.text;
+                if (n.positive && n.positive.base && !E.positive.value.trim()) {
+                    E.positive.value = n.positive.base;
+                }
+                wfDefaultsApplied = true;    // 只应用一次，之后点「刷新」不会清掉你正在编辑的参数
+            } catch (err) { /* 静默 */ }
+        }
+
+        async function refresh() {
+            setConn(null, '正在检测…');
+            // 工作流默认值与 ComfyUI 是否就绪无关（读的是本地 JSON 文件）—— 必须先加载，
+            // 否则 ComfyUI 还在启动时打开页面，steps/cfg/宽高/负面词全都读不到。
+            await loadWorkflow();
+            try {
+                const st = await api.get('/local/status');
+                if (!st.comfy_up) {
+                    const wf = wfSummary();
+                    setConn(false, 'ComfyUI 正在启动…' + (wf ? ('　· 已读到工作流默认：' + wf) : '') + '　· 下拉框就绪后会自动填充');
+                    if (needsFill(E.model)) fillSelect(E.model, [], '', null);
+                    if (needsFill(E.sampler)) fillSelect(E.sampler, [], '', RECOMMENDED.sampler);
+                    if (needsFill(E.scheduler)) fillSelect(E.scheduler, [], '', RECOMMENDED.scheduler);
+                    return;
+                }
+                const gpu = ((st.system_stats || {}).devices || [])[0] || {};
+                const gb = (v) => (v ? (v / 1073741824).toFixed(1) : null);
+                const vram = gpu.vram_total ? (' · 显存 ' + gb(gpu.vram_free) + '/' + gb(gpu.vram_total) + ' GB') : '';
+                setConn(true, 'ComfyUI 在线' + vram);
+                fillSelect(E.model, st.checkpoints || [], preferredModel());
+                await loadEnums();
+            } catch (err) {
+                setConn(false, '未连接到本地服务（请通过 启动.bat 打开页面）');
+            }
+        }
+        /* ---------------- 连接状态（轻量轮询，不影响用户的参数） ---------------- */
+        async function ping() {
+            let st;
+            try { st = await api.get('/local/status'); }
+            catch (err) { setConn(false, '未连接到本地服务（请通过 启动.bat 打开页面）'); return; }
+            if (!st.comfy_up) {
+                const wf = wfSummary();
+                setConn(false, 'ComfyUI 正在启动…' + (wf ? ('　· 已读到工作流默认：' + wf) : '') + '　· 下拉框就绪后会自动填充');
+                if (needsFill(E.model)) fillSelect(E.model, [], '', null);
+                return;
+            }
+            const gpu = ((st.system_stats || {}).devices || [])[0] || {};
+            const gb = (v) => (v ? (v / 1073741824).toFixed(1) : null);
+            const vram = gpu.vram_total ? (' · 显存 ' + gb(gpu.vram_free) + '/' + gb(gpu.vram_total) + ' GB') : '';
+            setConn(true, 'ComfyUI 在线' + vram);
+            if (needsFill(E.model)) {
+                fillSelect(E.model, st.checkpoints || [], preferredModel());
+            }
+            // 首屏打开时 ComfyUI 通常还在启动，这里补上采样器/调度器（原来漏了，导致下拉框永远是空的）
+            if (needsFill(E.sampler) || needsFill(E.scheduler)) {
+                await loadEnums();
+            }
+        }
+
+        /* ---------------- 提示词填充 ---------------- */
+        function tagsFromBoard() {
+            const chips = document.querySelectorAll('#selected-tags-container [data-en-tag]');
+            const list = [];
+            chips.forEach(c => {
+                const t = (c.dataset.enTag || '').trim();
+                if (t && list.indexOf(t) === -1) list.push(t);
+            });
+            return list.join(', ');
+        }
+
+        function fillPositive(text, emptyNote) {
+            if (!text) { E.progressText.textContent = emptyNote || '没有可填入的内容'; return; }
+            E.positive.value = text;
+            const n = text.split(',').filter(s => s.trim()).length;
+            E.progressText.textContent = '已填入 ' + n + ' 个标签';
+        }
+
+        /* ---------------- 结果画廊（含历史浏览 / 灯箱 / 打开文件夹） ---------------- */
+        const galleryImages = [];     // 当前画廊中的图片，供灯箱 ← → 导航
+        const ALL = '__all__';        // 「看整个流程」的虚拟批次
+        let allRuns = [];
+        let galleryLoaded = false;    // 画廊是否已经加载过（点过「刷新图片」或自己出过图）
+        let gallerySyncing = false;   // 焦点同步防重入
+        let currentSeries = null;
+        let currentRunId = ALL;
+        let lbIndex = -1;
+
+        function reveal(relPath, runId) {
+            const body = {};
+            if (relPath) body.rel = relPath.replace(/^\/+/, '');
+            if (runId) body.run_id = runId;
+            api.post('/local/reveal', body).then(r => {
+                E.progressText.textContent = r.ok ? '已在资源管理器中打开' : ('打开失败：' + (r.error || '未知原因'));
+            }).catch(err => { E.progressText.textContent = '打开失败：' + err.message; });
+        }
+
+        function openLightbox(src) {
+            const i = galleryImages.findIndex(g => g.src === src);
+            lbIndex = i < 0 ? 0 : i;
+            showLightbox();
+        }
+
+        function showLightbox() {
+            const g = galleryImages[lbIndex];
+            if (!g) return;
+            E.lightboxImg.src = g.src;
+            E.lightboxCap.textContent = (lbIndex + 1) + ' / ' + galleryImages.length + '　seed ' + g.seed;
+            E.lightbox.classList.remove('hidden');
+            E.lightbox.classList.add('flex');
+        }
+
+        function closeLightbox() {
+            E.lightbox.classList.add('hidden');
+            E.lightbox.classList.remove('flex');
+            E.lightboxImg.removeAttribute('src');
+        }
+
+        function stepLightbox(d) {
+            if (!galleryImages.length) return;
+            lbIndex = (lbIndex + d + galleryImages.length) % galleryImages.length;
+            showLightbox();
+        }
+
+        function galleryTool(icon, title, onClick) {
+            const b = document.createElement('button');
+            b.title = title;
+            b.className = 'bg-black/60 text-white text-xs rounded px-1 py-0.5 hover:bg-black/80';
+            b.innerHTML = '<i class="fa-solid ' + icon + '"></i>';
+            b.addEventListener('click', e => { e.stopPropagation(); onClick(b); });
+            return b;
+        }
+
+        // 两步确认：第一次点按钮变红、文字换成提示，3 秒内再点才真执行；超时自动复位
+        function confirmThen(btn, label, onConfirm) {
+            if (btn.dataset.armed === '1') {
+                btn.dataset.armed = '';
+                btn.classList.remove('bg-red-600');
+                btn.innerHTML = btn.dataset.label || btn.innerHTML;
+                onConfirm();
+                return;
+            }
+            btn.dataset.armed = '1';
+            btn.dataset.label = btn.innerHTML;
+            btn.classList.add('bg-red-600');
+            btn.innerHTML = label;
+            setTimeout(() => {
+                if (btn.dataset.armed !== '1') return;
+                btn.dataset.armed = '';
+                btn.classList.remove('bg-red-600');
+                btn.innerHTML = btn.dataset.label;
+            }, 3000);
+        }
+
+        // 服务端只接受裸文件名，而 it.files[0] 是 /_internal/output/<run>/<file> 形式
+        function bareName(urlPath) {
+            return String(urlPath || '').split('/').pop();
+        }
+
+        async function doDelete(runId, fileUrl, what) {
+            if (!runId) { E.progressText.textContent = '当前没有可删除的批次'; return; }
+            const body = fileUrl ? { run_id: runId, file: bareName(fileUrl) } : { run_id: runId };
+            E.progressText.textContent = '正在删除…';
+            let r;
+            try { r = await api.post('/local/delete', body); }
+            catch (err) { E.progressText.textContent = '删除失败：' + err.message; return; }
+            if (!r.ok) { E.progressText.textContent = '删除失败：' + (r.error || '未知原因'); return; }
+            E.progressText.textContent = what + '已删除（已移入回收站，可从回收站还原）';
+            await loadHistory();
+        }
+
+        // ↻ 用这张图的参数回填表单（**不动提示词**）——「保留构图，只改提示词」的最常用动作
+        function reuseParams(it) {
+            const p = it.params || {};
+            const s = p.sampler || {}, l = p.latent || {};
+            if (it.seed != null) E.seed.value = it.seed;
+            if (s.steps != null) E.steps.value = s.steps;
+            if (s.cfg != null) E.cfg.value = s.cfg;
+            if (s.sampler_name) E.sampler.value = s.sampler_name;
+            if (s.scheduler) E.scheduler.value = s.scheduler;
+            if (l.width) E.width.value = l.width;
+            if (l.height) E.height.value = l.height;
+
+            const m = (p.model && (p.model.ckpt_name || p.model.unet_name)) || null;
+            let note = '';
+            if (m) {
+                if (Array.from(E.model.options).some(o => o.value === m)) {
+                    E.model.value = m;
+                } else {
+                    note = '（模型 ' + m + ' 不在当前列表，未回填）';
+                }
+            }
+            E.progressText.textContent = '已回填 seed ' + it.seed + ' 的参数' + note + '，改完提示词就能再出图';
+            E.positive.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // ↙ 把这一批的提示词载入输入框，便于在其基础上修改
+        function loadRunPrompt(run) {
+            if (!run) return;
+            if (run.positive) E.positive.value = run.positive;
+            if (run.negative) E.negative.value = run.negative;
+            E.progressText.textContent = '已载入这一批的提示词，可在此基础上修改';
+            E.positive.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // 合并视图里不同批次的 index 会重名，所以用 uid 生成单元格 id
+        const cellKey = (it) => String(it.uid || it.index).replace(/[^0-9a-zA-Z]/g, '_');
+
+        // 已结束的批次里「没有图」的格子（图片被删掉 / 生成失败）不再占位：
+        // 否则删图后画廊会留一个空荡荡的「等待中」格子，张数也会虚报。
+        function galleryItems(run) {
+            const items = (run && run.items) || [];
+            if (!run || (run.status !== 'done' && run.status !== 'error')) return items;
+            return items.filter(it => (it.files && it.files[0]) || (it.live && it.live[0]));
+        }
+
+        function renderGallery(run) {
+            const items = galleryItems(run);
+            if (!items.length) {
+                E.gallery.dataset.sig = '';
+                E.gallery.innerHTML = '<p class="text-xs text-slate-500 col-span-full">本次没有成功排队的任务。</p>';
+                return;
+            }
+            // 用「批次号 + 格子清单」当签名：加图、删图都会让签名变化，从而立刻重建
+            const sig = run.run_id + '|' + items.map(cellKey).join(',');
+            if (E.gallery.dataset.sig !== sig) {
+                E.gallery.dataset.sig = sig;
+                E.gallery.innerHTML = '';
+                galleryImages.length = 0;
+                items.forEach(it => {
+                    const cell = document.createElement('div');
+                    cell.id = 'wb-cell-' + cellKey(it);
+                    cell.className = 'relative rounded-md overflow-hidden bg-slate-900 border border-slate-700 aspect-[3/4] flex items-center justify-center';
+                    cell.innerHTML = '<span class="text-xs text-slate-500">等待中</span>';
+                    E.gallery.appendChild(cell);
+                });
+            }
+            items.forEach(it => {
+                const cell = $('wb-cell-' + cellKey(it));
+                if (!cell) return;
+                // 优先用已归档到 output/ 的路径（永久有效），否则退回 ComfyUI 实时通道
+                const src = (it.files && it.files[0]) || (it.live && it.live[0]);
+                if (!src || cell.dataset.src === src) return;
+                cell.dataset.src = src;
+                cell.innerHTML = '';
+                const img = document.createElement('img');
+                img.src = src;
+                img.loading = 'lazy';
+                img.className = 'w-full h-full object-cover cursor-zoom-in';
+                img.addEventListener('click', () => openLightbox(src));
+                cell.appendChild(img);
+                galleryImages.push({ src: src, seed: it.seed });
+
+                const caption = document.createElement('span');
+                caption.className = 'absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-1 py-0.5 truncate';
+                caption.textContent = (run.combined && it.at ? (fmtTime(it.at) + '　') : '') + 'seed ' + it.seed;
+                cell.appendChild(caption);
+
+                const link = document.createElement('a');
+                link.href = src;
+                link.target = '_blank';
+                link.title = '新窗口打开原图';
+                link.className = 'absolute top-1 right-1 bg-black/60 text-white text-xs rounded px-1 py-0.5 hover:bg-black/80';
+                link.innerHTML = '<i class="fa-solid fa-up-right-from-square"></i>';
+                link.addEventListener('click', e => e.stopPropagation());
+                cell.appendChild(link);
+
+                // 左上角一排小工具：打开文件夹 / 用这张参数重跑 / 载入提示词
+                const tools = document.createElement('div');
+                tools.className = 'absolute top-1 left-1 flex gap-1';
+                cell.appendChild(tools);
+
+                if (it.files && it.files[0]) {
+                    tools.appendChild(galleryTool('fa-folder-open', '在资源管理器中选中这张图',
+                        () => reveal(it.files[0])));
+                    tools.appendChild(galleryTool('fa-trash-can', '删除这张图（送回收站，可从回收站还原）',
+                        (b) => confirmThen(b, '确认？', () => doDelete(it.run_id || run.run_id, it.files[0], '这张图'))));
+                }
+                if (it.params) {
+                    tools.appendChild(galleryTool('fa-rotate-right', '用这张的参数（seed / 步数 / CFG / 尺寸 / 采样器）重跑',
+                        () => reuseParams(it)));
+                }
+                tools.appendChild(galleryTool('fa-arrow-down-long', '把这张所在批次的提示词载入输入框',
+                    () => loadRunPrompt(runById(it.run_id) || run)));
+            });
+        }
+        function fmtTime(iso) {
+            return iso ? iso.replace('T', ' ').slice(5, 16) : '';
+        }
+
+        /* ---- 系列：同一流程的图收在一个文件夹里，一眼看出改了哪里、哪里变好 ---- */
+        function seriesOf(r) { return r.series || '未归类'; }
+
+        function seriesNames() {
+            const seen = [];
+            allRuns.forEach(r => { const n = seriesOf(r); if (seen.indexOf(n) === -1) seen.push(n); });
+            return seen;                       // allRuns 已按时间倒序，系列也是新的在前
+        }
+
+        function runsOfSeries(name) { return allRuns.filter(r => seriesOf(r) === name); }
+
+        function runById(id) { return allRuns.filter(r => r.run_id === id)[0] || null; }
+
+        function countImages(rs) {
+            return rs.reduce((s, r) => s + galleryItems(r).length, 0);
+        }
+
+        function currentSeriesDir() {
+            const rs = runsOfSeries(currentSeries);
+            return rs.length ? rs[0].series_dir : null;
+        }
+
+        function chipButton(text, title, active, onClick) {
+            const b = document.createElement('button');
+            b.className = 'h-6 px-2 text-xs rounded-md transition-colors duration-200 ' +
+                (active ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600');
+            b.textContent = text;
+            b.title = title;
+            b.addEventListener('click', onClick);
+            return b;
+        }
+
+        // 当前要显示什么：选中某一批 → 就那一批；选中「全部」→ 本系列所有图按时间正序拼起来，
+        // 这样翻一遍就能看出这一路是怎么改好的
+        function currentView() {
+            const rs = runsOfSeries(currentSeries);
+            if (currentRunId && currentRunId !== ALL) {
+                const one = rs.filter(r => r.run_id === currentRunId)[0];
+                if (one) return one;
+                currentRunId = ALL;
+            }
+            const asc = rs.slice().sort((a, b) => String(a.created || '').localeCompare(String(b.created || '')));
+            const items = [];
+            asc.forEach(r => galleryItems(r).forEach(it => {
+                items.push(Object.assign({}, it, { uid: r.run_id + '#' + it.index, run_id: r.run_id, at: r.created }));
+            }));
+            return { run_id: ALL, series: currentSeries, combined: true, items: items,
+                     created: asc.length ? asc[asc.length - 1].created : null };
+        }
+
+        function renderSeriesbar() {
+            E.seriesbar.innerHTML = '';
+            const names = seriesNames();
+            if (names.length < 2) return;      // 只有一个系列时不占地方
+            names.forEach(n => {
+                const rs = runsOfSeries(n);
+                E.seriesbar.appendChild(chipButton(
+                    n + ' · ' + rs.length + '批/' + countImages(rs) + '张',
+                    '系列：' + n + '\n同一流程的图都收在 _internal/output/' + n + '/',
+                    currentSeries === n,
+                    () => {
+                        currentSeries = n;
+                        currentRunId = ALL;
+                        renderSeriesbar(); renderRunbar(); renderGallery(currentView());
+                    }));
+            });
+        }
+
+        function renderRunbar() {
+            E.runbar.innerHTML = '';
+            const rs = runsOfSeries(currentSeries);
+            if (!rs.length) return;
+            E.runbar.appendChild(chipButton(
+                '全部 · ' + countImages(rs) + '张',
+                '按时间正序看这个系列的全部图 —— 一眼看出改了哪里、哪里变好了',
+                currentRunId === ALL,
+                () => { currentRunId = ALL; renderRunbar(); renderGallery(currentView()); }));
+            rs.forEach(r => {
+                E.runbar.appendChild(chipButton(
+                    fmtTime(r.created) + ' · ' + galleryItems(r).length + '张',
+                    r.run_id + (r.positive ? ('\n' + r.positive) : ''),
+                    currentRunId === r.run_id,
+                    () => { currentRunId = r.run_id; renderRunbar(); renderGallery(r); }));
+            });
+        }
+
+        /* 拉取 _internal/output/ 的全部历史并重建画廊。
+           只在三种情况下被调用：点「刷新图片」、删图之后、自己出图完成之后。
+           打开页面时不再自动调用 —— 免得命令行练的图自己跑到页面上。 */
+        async function loadHistory(selectRun) {
+            let d;
+            try { d = await api.get('/local/runs'); } catch (err) { return; }
+            allRuns = d.runs || [];
+            galleryLoaded = true;
+
+            const names = seriesNames();
+            if (!names.length) {
+                currentSeries = null;
+                E.seriesbar.innerHTML = '';
+                E.runbar.innerHTML = '';
+                E.gallery.dataset.sig = '';
+                E.gallery.innerHTML = '<p class="text-xs text-slate-500 col-span-full">还没有出过图。</p>';
+                E.galleryInfo.textContent = '尚无历史';
+                return;
+            }
+            if (names.indexOf(currentSeries) === -1) currentSeries = names[0];
+            if (selectRun) {
+                const r = runById(selectRun);
+                if (r) currentSeries = seriesOf(r);      // 新出的图可能落在别的系列，跟着切过去
+                currentRunId = selectRun;
+            }
+            const rs = runsOfSeries(currentSeries);
+            if (currentRunId !== ALL && !rs.some(r => r.run_id === currentRunId)) currentRunId = ALL;
+
+            renderSeriesbar();
+            renderRunbar();
+            renderGallery(currentView());
+            E.galleryInfo.textContent = '系列「' + currentSeries + '」· ' + rs.length + ' 次出图 · '
+                + countImages(rs) + ' 张图'
+                + (names.length > 1 ? ('　（共 ' + names.length + ' 个系列）') : '');
+        }
+
+        /* 手动刷新画廊 —— 新出的图不会自己上图，必须点「刷新图片」才拉一次 _internal/output/ */
+        async function reloadGallery() {
+            E.reload.disabled = true;
+            E.galleryInfo.textContent = '正在扫描 _internal/output/ …';
+            try {
+                await loadHistory();
+                E.progressText.textContent = '画廊已刷新：读到 ' + allRuns.length + ' 个批次 / '
+                    + countImages(allRuns) + ' 张图';
+            } finally {
+                E.reload.disabled = false;
+            }
+        }
+
+        /* 窗口重新获得焦点时同步一次画廊 —— 命令行练图 / 删图后切回窗口即可看到最新结果，
+           不必再手点「刷新图片」。只在「画廊已经加载过」之后生效：刚打开页面时仍然不自动拉，
+           命令行练的图不会自己冒出来（保留原来的设计）。 */
+        window.addEventListener('focus', async () => {
+            if (!galleryLoaded || gallerySyncing || pollTimer || busy) return;
+            gallerySyncing = true;
+            try { await loadHistory(currentRunId === ALL ? null : currentRunId); }
+            finally { gallerySyncing = false; }
+        });
+
+        /* ---------------- 出图与进度 ---------------- */
+        function setBusy(state) {
+            busy = state;
+            E.generate.disabled = state;
+            E.generate.classList.toggle('opacity-50', state);
+            E.generate.classList.toggle('cursor-not-allowed', state);
+        }
+
+        function startPolling(runId) {
+            if (pollTimer) clearInterval(pollTimer);
+            const tick = async () => {
+                let d;
+                try { d = await api.get('/local/run/' + runId); } catch (err) { return; }
+                const run = d.run;
+                const total = run.queued || run.count || 1;
+                const done = run.done_count || 0;
+                E.progress.style.width = Math.round(done / total * 100) + '%';
+                E.runInfo.textContent = run.run_id;
+                if (run.status === 'running') {
+                    E.progressText.textContent = '生成中… ' + done + '/' + total;
+                    E.galleryInfo.textContent = '已出 ' + done + ' / ' + total + ' 张';
+                } else if (run.status === 'done') {
+                    E.progressText.textContent = '完成，共 ' + (run.saved || 0) + ' 张 · 已归档到 _internal/output/'
+                        + (run.series || '未归类') + '/' + run.run_id + '/';
+                    clearInterval(pollTimer); pollTimer = null; setBusy(false);
+                    currentRunId = run.run_id;
+                    renderGallery(run);
+                    loadHistory(run.run_id);
+                } else {
+                    E.progressText.textContent = '失败：' + (run.error || '未知原因');
+                    E.galleryInfo.textContent = '';
+                    clearInterval(pollTimer); pollTimer = null; setBusy(false);
+                }
+                renderGallery(run);
+            };
+            tick();
+            pollTimer = setInterval(tick, 1500);
+        }
+
+        async function generate() {
+            if (busy) return;
+            const positive = E.positive.value.trim();
+            if (!positive) {
+                E.progressText.textContent = '正向提示词不能为空';
+                E.positive.focus();
+                return;
+            }
+            const body = {
+                positive: positive,
+                negative: E.negative.value.trim() || null,
+                series: E.series.value.trim() || null,
+                model: E.model.value || null,
+                sampler_name: E.sampler.value || null,
+                scheduler: E.scheduler.value || null,
+                steps: E.steps.value ? Number(E.steps.value) : null,
+                cfg: E.cfg.value ? Number(E.cfg.value) : null,
+                width: E.width.value ? Number(E.width.value) : null,
+                height: E.height.value ? Number(E.height.value) : null,
+                count: E.count.value ? Number(E.count.value) : 1,
+                seed: E.seed.value === '' ? null : Number(E.seed.value),
+                seed_stride: E.seedStride.value ? Number(E.seedStride.value) : null
+            };
+            try { localStorage.setItem('tagsd.series', E.series.value.trim()); } catch (err) { /* 隐私模式等 */ }
+            setBusy(true);
+            E.progressText.textContent = '正在提交…';
+            E.progress.style.width = '2%';
+            E.gallery.innerHTML = '';
+            galleryImages.length = 0;
+            E.gallery.dataset.sig = '';
+            let res;
+            try {
+                res = await api.post('/local/generate', body);
+            } catch (err) {
+                setBusy(false);
+                E.progressText.textContent = '请求出错：' + err.message;
+                return;
+            }
+            if (!res.ok) {
+                setBusy(false);
+                E.progressText.textContent = '提交失败：' + (res.error || JSON.stringify(res.errors || res));
+                return;
+            }
+            E.runInfo.textContent = res.run_id;
+            E.progressText.textContent = '已排队 ' + res.queued + ' 张';
+            startPolling(res.run_id);
+        }
+        /* ---------------- 事件绑定 ---------------- */
+        E.fillTags.addEventListener('click', () => fillPositive(tagsFromBoard(), '已选标签区是空的'));
+        E.fillOutput.addEventListener('click', () => {
+            const out = document.getElementById('formatted-output');
+            fillPositive(out ? out.value.trim() : '', '格式化文本是空的');
+        });
+        E.fillBase.addEventListener('click', () => {
+            const base = defaults && defaults.positive && defaults.positive.base;
+            fillPositive(base || '', '工作流里没有基础正向词');
+        });
+        E.dice.addEventListener('click', () => { E.seed.value = Math.floor(Math.random() * 2147483647); });
+        E.generate.addEventListener('click', generate);
+        E.refresh.addEventListener('click', refresh);
+        E.reload.addEventListener('click', reloadGallery);
+        E.openDir.addEventListener('click', () => {
+            if (currentRunId && currentRunId !== ALL) reveal(null, currentRunId);
+            else if (currentSeries) reveal(currentSeriesDir(), null);
+            else reveal(null, null);
+        });
+        E.delRun.addEventListener('click', () => {
+            if (currentRunId === ALL) {
+                E.progressText.textContent = '「全部」是合并视图，请先选一个具体批次再整批删除，或逐张删';
+                return;
+            }
+            if (!currentRunId) { E.progressText.textContent = '当前没有可删除的批次'; return; }
+            confirmThen(E.delRun, '确认删除整批？', () => doDelete(currentRunId, null, '整批'));
+        });
+        E.shutdown.addEventListener('click', () => {
+            confirmThen(E.shutdown, '确认关闭？', async () => {
+                E.progressText.textContent = '正在关闭服务…（ComfyUI、页面窗口、终端窗口会一起收掉）';
+                try { await fetch('/local/shutdown', { method: 'POST' }); }
+                catch (err) { /* 服务已经在关了 */ }
+            });
+        });
+        E.lightboxClose.addEventListener('click', closeLightbox);
+        E.lightboxPrev.addEventListener('click', e => { e.stopPropagation(); stepLightbox(-1); });
+        E.lightboxNext.addEventListener('click', e => { e.stopPropagation(); stepLightbox(1); });
+        E.lightbox.addEventListener('click', e => { if (e.target === E.lightbox) closeLightbox(); });
+        document.addEventListener('keydown', e => {
+            if (E.lightbox.classList.contains('hidden')) return;
+            if (e.key === 'Escape') closeLightbox();
+            else if (e.key === 'ArrowLeft') stepLightbox(-1);
+            else if (e.key === 'ArrowRight') stepLightbox(1);
+        });
+        E.interrupt.addEventListener('click', async () => {
+            try { await api.post('/local/interrupt', null); E.progressText.textContent = '已发送中断指令'; }
+            catch (err) { E.progressText.textContent = '中断失败'; }
+        });
+        E.clear.addEventListener('click', async () => {
+            try { await api.post('/api/queue', { clear: true }); E.progressText.textContent = '已清空 ComfyUI 等待队列'; }
+            catch (err) { E.progressText.textContent = '清空失败'; }
+        });
+        E.free.addEventListener('click', async () => {
+            try { await api.post('/local/free', null); E.progressText.textContent = '已请求释放显存'; }
+            catch (err) { E.progressText.textContent = '释放失败'; }
+        });
+
+        function boot() {
+            refresh();
+            // 不再自动 loadHistory()：命令行练的图不该自己冒到页面上。
+            // 想看已有出图请点「刷新图片」；自己出图完成后仍然会自动显示那一批（见 startPolling）。
+            E.gallery.dataset.sig = '';
+            E.gallery.innerHTML = '<p class="text-xs text-slate-500 col-span-full">点右上角「刷新图片」加载已有出图。</p>';
+            E.galleryInfo.textContent = '未加载（点「刷新图片」）';
+            // 记住上次用的系列名：同一个主题继续迭代时不用每次重打
+            try {
+                const s = localStorage.getItem('tagsd.series');
+                if (s) E.series.value = s;
+            } catch (err) { /* 隐私模式等 */ }
+            // 没连上时 3 秒探一次（ComfyUI 启动中），连上后降到 15 秒
+            const loop = () => {
+                if (!pollTimer) ping();
+                setTimeout(loop, connOk ? 15000 : 3000);
+            };
+            setTimeout(loop, 3000);
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', boot);
+        } else {
+            boot();
+        }
+
+
+
+    })();
+    </script>
+
+</body>
+</html>

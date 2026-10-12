@@ -1,0 +1,153 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "illustriousXLV20.b8Gn.safetensors_.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Checkpoint加载器（简易）"
+    }
+  },
+  "2": {
+    "inputs": {
+      "seed": 128121212426811,
+      "steps": 20,
+      "cfg": 6.5,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1,
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "4",
+        0
+      ],
+      "negative": [
+        "5",
+        0
+      ],
+      "latent_image": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "K采样器"
+    }
+  },
+  "3": {
+    "inputs": {
+      "width": 768,
+      "height": 1344,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "空Latent图像"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": [
+        "8",
+        0
+      ],
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "5": {
+    "inputs": {
+      "text": "lowres, worst quality, low quality, blurry, pixelated, jpeg artifacts, bad anatomy, bad hands, extra digits, missing fingers, fused fingers, text, speech bubble, watermark, signature, logo, flat coloring, simple shading, 3d render, photorealistic, ugly, deformed, harsh brush, messy painting, plastic skin\n",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "6": {
+    "inputs": {
+      "samples": [
+        "2",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "7": {
+    "inputs": {
+      "images": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "预览图像"
+    }
+  },
+  "8": {
+    "inputs": {
+      "string_a": [
+        "9",
+        0
+      ],
+      "string_b": [
+        "10",
+        0
+      ],
+      "delimiter": ""
+    },
+    "class_type": "StringConcatenate",
+    "_meta": {
+      "title": "连接"
+    }
+  },
+  "9": {
+    "inputs": {
+      "value": "masterpiece, best quality, amazing quality, very aesthetic, absurdres, highres, newest, intricate details, highly detailed, detailed background, sharp focus, 8k,\nanime illustration, official art, anime coloring, clean lineart, crisp lines, vibrant colors, vivid colors, high contrast, glossy highlights, detailed eyelashes, beautiful detailed face, fine hair strands, flowing hair, detailed clothing folds, soft shading, cinematic lighting, backlighting, light particles, lens flare, bokeh, depth of field, colorful\n(official art:1.15), (anime coloring:1.1)"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "正向base"
+    }
+  },
+  "10": {
+    "inputs": {
+      "value": "1girl, solo, breasts, open mouth, large breasts, skirt, black hair, hair ornament, pantyhose, high heels, short shorts, expressionless, high ponytail, drooling, revealing clothes, bedroom, rolling eyes, long hair, legs together, leg lift, "
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "特殊要求"
+    }
+  },
+  "14": {
+    "inputs": {
+      "model_name": "4xNomos8k_atd_jpg.safetensors"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "加载放大模型"
+    }
+  }
+}

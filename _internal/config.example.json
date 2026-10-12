@@ -1,0 +1,38 @@
+{
+  "_help": "把本文件复制为 _internal/config.json 再改。没有 config.json 时服务会用内置默认值（预设 C:\\ComfyUI\\...，只有 ComfyUI 装在默认位置才正好对上，否则要改）；启动.bat 会自动查找可用的 python。",
+  "server": {
+    "host": "127.0.0.1",
+    "port": 9000,
+    "open_browser": true,
+    "page": "TagSDanbooru.html",
+
+    "_single_window": "用独立 profile 开一个应用窗口（无地址栏），启动时自动关掉上一次的窗口；改成 false 则退回往默认浏览器开新标签页",
+    "single_window": true,
+    "_close_window_on_exit": "关掉 启动.bat 时一并关掉这个页面窗口",
+    "close_window_on_exit": true,
+    "_browser_exe": "留空=自动查找 Chrome / Edge / Brave；也可写完整路径，例如 C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "browser_exe": ""
+  },
+  "comfy": {
+    "_help": "出图工作台靠这两项找到你的 ComfyUI；不用出图功能就不用填",
+    "python": "C:\\ComfyUI\\python\\python.exe",
+    "dir": "C:\\ComfyUI\\ComfyUI",
+    "host": "127.0.0.1",
+    "port": 8188,
+    "auto_start": true,
+    "startup_timeout_sec": 240,
+    "extra_args": ["--disable-auto-launch"]
+  },
+  "paths": {
+    "tag_csv": "_internal/data/danbooru_all_2.csv",
+    "tag_json": "_internal/data/danbooru_all_2.json",
+    "workflow": "_internal/workflows/illSdxl.json",
+    "output_dir": "_internal/output",
+    "sweeps_dir": "_internal/sweeps",
+    "logs_dir": "_internal/logs"
+  },
+  "defaults": {
+    "filename_prefix": "tagsd",
+    "replace_preview_with_save": true
+  }
+}
