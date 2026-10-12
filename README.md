@@ -1,8 +1,8 @@
 # TagSDanbooru · Danbooru 标签助手
 
-TagSDanbooru 是一个 Danbooru 标签助手，一个本地运行的网页，用来搜索、挑选、组合标签，并生成可以直接使用的提示词和通配符文件。标签数据随仓库附带，不需要联网。
+TagSDanbooru 是一个 Danbooru 标签助手：本地运行的网页，用来搜索、挑选、组合标签，并生成可直接使用的提示词和通配符文件。标签数据随仓库附带，不需要联网。
 
-页面里还有一个出图工作台，接你本机的 ComfyUI，方便随手看一眼当前词条的初步效果。它不是 ComfyUI / WebUI 的替代品，能力边界见「出图工作台」一节。
+页面里还有一个出图工作台，接你本机的 ComfyUI，方便随手看一眼当前词条的初步效果。它不是 ComfyUI / WebUI 的替代品。
 
 ## 📦 前置要求
 
@@ -10,10 +10,10 @@ TagSDanbooru 是一个 Danbooru 标签助手，一个本地运行的网页，用
 
 - **ComfyUI**（可选）：项目不打包 ComfyUI 和模型，出图工作台只是通过 HTTP 调用你本机跑着的那个。不用出图功能可以完全忽略。
 - **标签库 CSV**：已随仓库附带（15 万行，约 6 MB，danbooru 2025-05-01 快照），开箱即用。想换成自己的词库，覆盖 `_internal/data/danbooru_all_2.csv` 就行。
-- **Python 3.8+（含 aiohttp）**：`启动.bat` 会自动查找可用的 python，顺序是 `TAGSD_PY` → `config.json` 的 `comfy.python` → 常见 ComfyUI 路径 → PATH。用 ComfyUI 自带的那个最省事，系统 python 需要 `pip install aiohttp`。
-- **Chrome / Edge / Brave**（可选）：想要「独立窗口 + 单实例接管」这个体验才需要，留空会自动查找，也可以在 `config.json` 的 `server.browser_exe` 里指定。
+- **Python 3.8+（含 aiohttp）**：`启动.bat` 会自动查找可用的 python，顺序是 `TAGSD_PY` → `config.json` 的 `comfy.python` → 常见 ComfyUI 路径 → PATH。用 ComfyUI 自带的那个最省事。
+- **Chrome / Edge / Brave**（可选）：想要「独立窗口 + 单实例接管」这个体验才需要，留空会自动查找。
 
-只想要标签助手、不用出图工作台的话，有标签库 CSV 和一个浏览器就够了，双击 `启动.bat` 即可。
+> 只想要标签助手、不用出图工作台的话，有标签库 CSV 和一个浏览器就够了，双击 `启动.bat` 即可。
 
 ## 🚀 怎么用
 
@@ -24,9 +24,13 @@ TagSDanbooru 是一个 Danbooru 标签助手，一个本地运行的网页，用
 
 想收工时点工作台里的「⏻ 关闭服务」（两步确认），ComfyUI、页面窗口、终端窗口会一起收掉，也可以直接关掉那个命令行窗口。
 
-页面窗口和终端窗口都是单实例的，反复双击 `启动.bat` 也只会保留一个，新的一次会让上一次干净退出再启动。页面用的是项目专属的浏览器配置目录 `_internal/.browser/`，和你日常浏览器完全隔离，不会往里塞标签页。相关开关在 `_internal/config.json` 的 `server` 段：`single_window`、`close_window_on_exit`、`browser_exe`。只有从 `启动.bat` 启动时才会接管终端窗口，如果你在自己的命令行里手动跑 `server.py`，程序不会记录任何窗口，也不会去动你的终端。
+> **页面窗口和终端窗口都是单实例的。** 反复双击 `启动.bat` 也只会保留一个，新的一次会让上一次干净退出再启动。
+> 页面用的是项目专属的浏览器配置目录 `_internal/.browser/`，和你日常浏览器完全隔离，不会往里塞标签页。
+> 相关开关都在 `_internal/config.json` 的 `server` 段：`single_window`、`close_window_on_exit`、`browser_exe`。
+> 只有从 `启动.bat` 启动时才会接管终端窗口；如果你在自己的命令行里手动跑 `server.py`，程序不会记录任何窗口，也就不会去动你的终端。
 
-根目录只需要关注三项：`启动.bat`、`TagSDanbooru.html`、`README.md`，其余都在 `_internal/` 里（标签数据、ComfyUI 工作流、图片资源、出图归档、日志），日常不用进去。
+> **目录说明**：根目录只需要关注三项，`启动.bat`、`TagSDanbooru.html`、`README.md`。
+> 其余都在 `_internal/` 里（标签数据、ComfyUI 工作流、图片资源、出图归档、日志），日常不用进去。
 
 ## 🌟 核心功能
 
@@ -48,11 +52,21 @@ TagSDanbooru 是一个 Danbooru 标签助手，一个本地运行的网页，用
 - **操作**：开始出图 / 中断 / 清空队列 / 释放显存 / 关闭服务。
 - **进度**：进度条加 `生成中… 2/5` 实时刷新。
 
-这个工作台只是为了方便看词条的初步效果：选好标签随手配一下、快速出张图，确认这组词大概长什么样，不是拿来正经出图的。它只覆盖提示词和最基本的采样参数，参数面板源自 `_internal/workflows/illSdxl.json` 这一张固定工作流。LoRA、ControlNet、hires fix、局部重绘、图生图、放大这些都没有，也不打算做，那是 ComfyUI 的主场。它做的事就是把提示词和常用参数快速送到你已经调好的配方上，复杂度再高的出图还是回 ComfyUI。
+> **工作台只是个看效果的入口。** 选好标签随手配一下、快速出张图，确认这组词大概长什么样，不是拿来正经出图的。
+> 它只覆盖提示词和最基本的采样参数，参数面板源自 `_internal/workflows/illSdxl.json` 这一张固定工作流。
+> LoRA、ControlNet、hires fix、局部重绘、图生图、放大这些都没有，也不打算做。想在出图上做更多，那还是 ComfyUI 的主场。
 
-ComfyUI 启动需要十几秒。这期间下拉框显示「（ComfyUI 启动中…）」，状态栏会告诉你已经读到的工作流默认值；就绪后下拉框自动填充，不用刷新页面。
+> ComfyUI 启动需要十几秒。这期间下拉框显示「（ComfyUI 启动中…）」，状态栏会告诉你已经读到的工作流默认值；
+> 就绪后下拉框自动填充，不用刷新页面。
 
-画风不由提示词决定。`_internal/workflows/illSdxl.json` 里标题为「正向base」的**节点 9** 是一段固定前缀，经节点 8 `StringConcatenate` 拼在每条正向最前面，服务端只替换节点 10，也就是你在页面上输入的配方。所以画风、质感、光照、细节要去节点 9 改，它就是 `PrimitiveStringMultiline` 节点的 `inputs.value`，直接编辑 JSON 即可，服务端每次出图都重新读盘，改完直接出图就生效，不用重启。仓库自带的节点 9 是 `anime illustration, official art, anime coloring …` 这套现代动漫插画风格，想换风格就改这一段。页面上的配方只管「谁 + 穿什么 + 表情 + 姿势」，这样 20 来个标签的预算可以全留给内容。
+> ⚠️ **画风不由提示词决定。** `_internal/workflows/illSdxl.json` 里标题为「正向base」的**节点 9** 是一段固定前缀，
+> 经节点 8 `StringConcatenate` 拼在每条正向最前面；服务端只替换节点 10，也就是你在页面上输入的配方。
+>
+> 要改画风、质感、光照、细节，就去改节点 9，它是 `PrimitiveStringMultiline` 节点的 `inputs.value`，直接编辑 JSON 即可。
+> 服务端每次出图都重新读盘，改完直接出图就生效，不用重启。
+>
+> 仓库自带的节点 9 是 `anime illustration, official art, anime coloring …` 这套现代动漫插画风格。
+> 页面上的配方只管「谁 + 穿什么 + 表情 + 姿势」，这样 20 来个标签的预算可以全留给内容。
 
 ### 出图结果：按「系列」归档
 
@@ -69,16 +83,21 @@ _internal/output/
         └── prompt.json
 ```
 
-- 系列名留空就按当天日期建文件夹（如 `20261012`），什么都不填也不会乱；浏览器会记住你上次用的系列名，下次打开自动填好。
+- 系列名留空就按当天日期建文件夹（如 `20261012`），什么都不填也不会乱。
+- 浏览器会记住你上次用的系列名，下次打开自动填好。
 - 图片按 `序号_seed.png` 命名，每个批次还带一份 `prompt.json`，记录这一批的正负向词和全部参数。
 
 这样同一个主题的迭代过程都躺在一个文件夹里，按时间排下来。
 
 ### 结果画廊
 
-画廊读取全部历史出图，不需要去翻文件夹。打开页面时不会自动扫，免得命令行练的图自己冒出来，先点右上角「刷新图片」；之后每次切回窗口会自动同步一次。
+画廊读取全部历史出图，不需要去翻文件夹。顶部有两条切换条：
 
-顶部有两条切换条。系列条是一行系列，点了就只看那个系列；批次条里第一个「全部」把这个系列所有批次的图按时间正序拼在一起，翻一遍就是一路改过来的全过程，后面的时间标签则只看那一次。
+- **系列条**：一行系列，点了就只看那个系列。
+- **批次条**：第一个「全部」把这个系列所有批次的图按时间正序拼在一起，翻一遍就是一路改过来的全过程；后面的时间标签则只看那一次。
+
+> 打开页面时**不自动扫**，免得命令行练的图自己冒出来，先点右上角「刷新图片」。
+> 之后每次切回窗口会自动同步一次，命令行练图 / 删图后不用再手动点。
 
 | 图标 / 操作 | 说明 |
 |---|---|
@@ -91,7 +110,8 @@ _internal/output/
 | 「打开文件夹」 | 在资源管理器中打开当前这一批（「全部」时是当前系列）的归档目录 |
 | 「删除这一批」 | 把当前这一整批送进回收站 |
 
-画廊是点「刷新图片」时才重建的页面快照。用命令行工具、回收站或者资源管理器在外部动过 `output/` 之后，页面不会自己知道，点一下「刷新图片」或切回窗口对齐即可。
+> 画廊是点「刷新图片」时才重建的页面快照。用命令行工具、回收站或资源管理器在外部动过 `output/` 之后，
+> 页面不会自己知道，点一下「刷新图片」或切回窗口就对上了。
 
 ### 附带的命令行小工具（`_internal/dev/`）
 
@@ -114,7 +134,8 @@ python _internal\dev\gen.py --series 试验 --positive-file _internal\dev\prompt
        --negative-file _internal\dev\prompts\负向.txt --count 2 --size 768x1344 --wait
 ```
 
-中文提示词请写成 UTF-8 文本文件用 `-file` 传入（`--series-file`、`--positive-file`、`--negative-file`），不要直接写在命令行参数里，这是 Windows 命令行编码的老问题，脚本注释里有说明。
+> 中文提示词请写成 UTF-8 文本文件用 `-file` 传入（`--series-file`、`--positive-file`、`--negative-file`），
+> 不要直接写在命令行参数里，这是 Windows 命令行编码的老问题。
 
 ## 🧑🎨 为谁设计？
 
@@ -134,4 +155,8 @@ python _internal\dev\gen.py --series 试验 --positive-file _internal\dev\prompt
 
 ## 📸 数据快照与更新
 
-随仓库附带的 `_internal/data/danbooru_all_2.csv` 是 danbooru 2025-05-01 时点的标签快照，开箱即用。页面里的「更新CSV」按钮会从本仓库的 GitHub raw 地址重新下载最新快照并覆盖本地缓存，也就是把这个仓库发布的最新版数据同步到本地，不是去取 danbooru 官方实时数据，所以只在本仓库更新过 CSV 之后才有意义。数据文件路径可以用 `_internal/config.json` 的 `paths.tag_csv` 调整。
+随仓库附带的 `_internal/data/danbooru_all_2.csv` 是 danbooru 2025-05-01 时点的标签快照，开箱即用。
+
+页面里的「更新CSV」按钮会从本仓库的 GitHub raw 地址重新下载最新快照、覆盖本地缓存，也就是把这个仓库发布的最新版数据同步到本地。它不是去取 danbooru 官方实时数据，所以只在本仓库更新过 CSV 之后才有意义。
+
+数据文件路径可以用 `_internal/config.json` 的 `paths.tag_csv` 调整。
