@@ -9,7 +9,7 @@ TagSDanbooru 是一个 Danbooru 标签助手：本地运行的网页，用来搜
 使用前需要准备：
 
 - **ComfyUI**（可选）：项目不打包 ComfyUI 和模型，出图工作台只是通过 HTTP 调用你本机跑着的那个。不用出图功能可以完全忽略。
-- **标签库 CSV**：已随仓库附带（15 万行，约 6 MB，danbooru 2025-05-01 快照），开箱即用。想换成自己的词库，覆盖 `_internal/data/tagsd_danbooru_zh.csv` 就行。
+- **标签库 CSV**：已随仓库附带（15 万行，约 6 MB，danbooru 2025-05-01 快照），开箱即用；其中**人气前 5,000 条的中文译名与分类已人工补齐**。想换成自己的词库，覆盖 `_internal/data/tagsd_danbooru_zh.csv` 就行。
 - **Python 3.8+（含 aiohttp）**：`启动.bat` 会自动查找可用的 python，顺序是 `TAGSD_PY` → `config.json` 的 `comfy.python` → 常见 ComfyUI 路径 → PATH。用 ComfyUI 自带的那个最省事。
 - **Chrome / Edge / Brave**（可选）：想要「独立窗口 + 单实例接管」这个体验才需要，留空会自动查找。
 
@@ -156,6 +156,8 @@ python _internal\dev\gen.py --series 试验 --positive-file _internal\dev\prompt
 ## 📸 数据快照与更新
 
 随仓库附带的 `_internal/data/tagsd_danbooru_zh.csv` 是 danbooru 2025-05-01 时点的标签快照，开箱即用。
+
+数据里的**中文译名与「一级 / 二级分类」由本项目持续维护**：热度最高的 5,000 条标签已逐条补齐译名与分类，其余长尾暂保持原样。补全工具在 `_internal/dev/fill_tags.py`（读「行号;;中文;;一级;;二级」映射，只填空格子，可重复运行）。
 
 页面里的「更新CSV」按钮会从本仓库的 GitHub raw 地址重新下载最新快照、覆盖本地缓存，也就是把这个仓库发布的最新版数据同步到本地。它不是去取 danbooru 官方实时数据，所以只在本仓库更新过 CSV 之后才有意义。
 
