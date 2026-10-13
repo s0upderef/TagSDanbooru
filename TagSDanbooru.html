@@ -381,7 +381,8 @@
                     
                     <!-- 人工分类筛选（一级 → 二级联动；仅覆盖已人工分类的高频词条） -->
                     <div id="l1-filters" class="flex flex-wrap items-center gap-1 pb-1 hidden"></div>
-                    <div id="l2-filters" class="flex flex-wrap items-center gap-1 pb-2 hidden"></div>
+                    <div id="l2-filters" class="flex flex-wrap items-center gap-1 pb-1 hidden"></div>
+                    <div id="l1-note" class="hidden text-[11px] leading-snug text-slate-500 pb-2">分类筛选只覆盖人工整理过的<span class="text-slate-400">人气前 5,000 条</span>词条，其余长尾标签不带分类；找长尾词条请用上面的搜索框。</div>
                     <div id="tag-list-container" class="flex-grow overflow-hidden no-scrollbar py-1 p-1 min-h-[410px]">
                         <div id="tag-list" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-2"></div>
                     </div>
@@ -707,6 +708,7 @@
                 allCategoriesBtn: document.getElementById('all-categories'),
                 l1Filters: document.getElementById('l1-filters'),
                 l2Filters: document.getElementById('l2-filters'),
+                l1Note: document.getElementById('l1-note'),
                 tagTooltip: document.getElementById('tag-tooltip'),
                 statsButtonsContainer: document.getElementById('stats-buttons-container'),
                 tagDetailsCard: document.getElementById('tag-details-card'),
@@ -1476,9 +1478,11 @@
                 if (counts.size === 0) {
                     elements.l1Filters.classList.add('hidden');
                     elements.l2Filters.classList.add('hidden');
+                    elements.l1Note.classList.add('hidden');
                     return;
                 }
                 elements.l1Filters.classList.remove('hidden');
+                elements.l1Note.classList.remove('hidden');
                 elements.l1Filters.title = '一级分类：仅覆盖已人工分类的 ' +
                     Array.from(counts.values()).reduce((a, b) => a + b, 0) + ' 条热门词条';
                 elements.l1Filters.innerHTML = '';
