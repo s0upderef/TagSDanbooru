@@ -9,5 +9,14 @@
 *.ico binary
 *.7z binary
 
+# 本地化的前端字体（_internal/vendor/fontawesome/webfonts）同样不能做行尾转换
+*.woff2 binary
+*.woff binary
+*.ttf binary
+*.otf binary
+
+# _internal/vendor 里的都是第三方文件：原样存盘，不做任何行尾转换，方便按哈希比对上游
+_internal/vendor/** -text
+
 # 标签数据快照：大文件，原样存储、不做行尾转换 / 文本 diff
 _internal/data/*.csv  -text -diff

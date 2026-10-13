@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TagSDanbooru · Danbooru 标签助手</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+    <!-- 前端依赖全部本地化在 _internal/vendor/：断网、代理抖动、CDN 被挡都不再让页面退化成裸 HTML -->
+    <link rel="stylesheet" href="_internal/vendor/fontawesome/css/all.min.css">
+    <script src="_internal/vendor/tailwindcss-3.4.17.js"></script>
+    <script src="_internal/vendor/papaparse-5.4.1.min.js"></script>
+    <script src="_internal/vendor/sortable-1.15.2.min.js"></script>
     <style>
         header {
             position: sticky;
@@ -261,6 +262,15 @@
     </style>
 </head>
 <body>
+    <!-- 资源自检横幅：Tailwind / 图标 / 解析库任何一个没起来都直接摆在最上面说清楚。
+         这里全用内联样式，就是为了在 Tailwind 本身挂掉时它仍然能正常显形。 -->
+    <div id="asset-warning" style="display:none;position:sticky;top:0;z-index:99;margin:0 0 8px 0;padding:10px 14px;
+                background:#7f1d1d;border-bottom:1px solid #ef4444;color:#fff;
+                font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,'Microsoft YaHei',sans-serif;font-size:13px;line-height:1.6">
+        <strong id="asset-warning-title">页面资源没有加载完整</strong>
+        <div id="asset-warning-detail" style="opacity:.92"></div>
+    </div>
+
     <!-- Tailwind 类名安全清单：确保只在 JS（CATEGORY_MAP）中出现的暗色类别类也会被生成 -->
     <div style="display:none" aria-hidden="true" class="bg-blue-500/15 text-blue-300 border-blue-500/30 bg-red-500/15 text-red-300 border-red-500/30 bg-purple-500/15 text-purple-300 border-purple-500/30 bg-green-500/15 text-green-300 border-green-500/30 bg-orange-500/15 text-orange-300 border-orange-500/30 bg-pink-500/15 text-pink-300 border-pink-500/30 bg-slate-900/60"></div>
     <div class="container mx-auto p-4 md:p-5 max-w-[1400px] min-h-screen flex flex-col compact-container">
@@ -291,7 +301,7 @@
                 <button id="update-csv-btn" title="从 GitHub 下载最新数据：页面立即使用，并自动下载 tagsd_danbooru_zh.csv 覆盖到项目目录" class="h-[36px] px-3 text-sm flex items-center justify-center gap-2 rounded-md transition-colors duration-200 bg-emerald-500 text-white hover:bg-emerald-600">
                     <i class="fa-solid fa-cloud-arrow-down"></i> 更新CSV
                 </button>
-                <button id="reload-app-btn" class="h-[36px] px-3 text-sm flex items-center justify-center gap-2 rounded-md transition-colors duration-200 bg-blue-500 text-white hover:bg-blue-600 hidden">
+                <button id="reload-app-btn" style="display:none" class="h-[36px] px-3 text-sm flex items-center justify-center gap-2 rounded-md transition-colors duration-200 bg-blue-500 text-white hover:bg-blue-600 hidden">
                     <i class="fa-solid fa-arrows-rotate"></i> 重新加载
                 </button>
             </div>
@@ -510,8 +520,21 @@
                 <div class="space-y-2">
                     <div class="grid grid-cols-2 gap-2">
                         <div class="col-span-2">
-                            <label class="text-xs text-slate-300">模型</label>
+                            <div class="flex flex-wrap items-center justify-between gap-1">
+                                <label class="text-xs text-slate-300">模型 <span id="wb-model-arch" class="text-slate-500"></span></label>
+                                <div class="flex items-center gap-1">
+                                    <button id="wb-model-rescan" title="重新扫一遍 ComfyUI 的 checkpoints 目录：只留当前工作流能用的模型，其余连原因一起报出来"
+                                            class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                                        <i class="fa-solid fa-magnifying-glass-chart"></i> 重新扫描
+                                    </button>
+                                    <button id="wb-model-all" title="把被过滤掉的模型也列出来（带原因），万一判错你还能手动选"
+                                            class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                                        <i class="fa-solid fa-list"></i> <span id="wb-model-all-label">显示全部</span>
+                                    </button>
+                                </div>
+                            </div>
                             <select id="wb-model" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500"></select>
+                            <p id="wb-model-hint" class="text-[11px] leading-snug text-slate-500 pt-1"></p>
                         </div>
                         <div>
                             <label class="text-xs text-slate-300">采样器</label>
@@ -734,6 +757,14 @@
                 tagDetailsContent: document.getElementById('tag-details-content'),
                 updateCsvBtn: document.getElementById('update-csv-btn')
             };
+
+            // 显隐小工具：既走 Tailwind 的 hidden，也写内联 display。
+            // 这样即使样式表没加载（例如 vendor 缺失），按钮也不会乱入，或者该出现的出不来。
+            const setHidden = (el, hide) => {
+                if (!el) return;
+                if (hide) { el.classList.add('hidden'); el.style.display = 'none'; }
+                else { el.classList.remove('hidden'); el.style.display = ''; }
+            };
             
             // 状态变量
             let state = {
@@ -866,7 +897,7 @@
                     elements.selectedCount.textContent = '0';
                     
                     // 隐藏重新加载按钮
-                    elements.reloadAppBtn.classList.add('hidden');
+                    setHidden(elements.reloadAppBtn, true);
                     
                     // 清除上一次的错误样式
                     elements.statusMessage.classList.remove('text-red-500');
@@ -986,11 +1017,11 @@
                             
                             if (options.keepLoadArea) {
                                 // 更新CSV流程：保留加载区，便于查看结果与提示
-                                elements.reloadAppBtn.classList.remove('hidden'); // 加载完成后显示重新加载按钮
+                                setHidden(elements.reloadAppBtn, false); // 加载完成后显示重新加载按钮
                             } else {
                                 // 加载完立即隐藏加载区（不再等待 2 秒）
-                                elements.loadAreaCard.classList.add('hidden');
-                                elements.reloadAppBtn.classList.remove('hidden'); // 加载完成后显示重新加载按钮
+                                setHidden(elements.loadAreaCard, true);
+                                setHidden(elements.reloadAppBtn, false); // 加载完成后显示重新加载按钮
                             }
                             
                             // 初始化拖拽排序
@@ -1004,7 +1035,7 @@
                             elements.statusMessage.classList.add('text-red-500');
                             
                             // 显示重新加载按钮
-                            elements.reloadAppBtn.classList.remove('hidden');
+                            setHidden(elements.reloadAppBtn, false);
                         }
                     });
                 },
@@ -1032,8 +1063,8 @@
                     elements.statusMessage.textContent = `${sourceName}加载完成！共 ${state.allTags.length.toLocaleString()} 个标签，耗时 ${duration} 秒。${outlierNote}${options.suffix || ''}`;
 
                     // 加载完立即隐藏加载区
-                    elements.loadAreaCard.classList.add('hidden');
-                    elements.reloadAppBtn.classList.remove('hidden');
+                    setHidden(elements.loadAreaCard, true);
+                    setHidden(elements.reloadAppBtn, false);
                     initSortable();
                 },
 
@@ -1637,7 +1668,7 @@
                     elements.updateCsvBtn.addEventListener('click', () => {
                         elements.csvUrlInput.value = REMOTE_URL;
                         // 展开加载区，便于查看下载/解析进度与结果
-                        elements.loadAreaCard.classList.remove('hidden');
+                        setHidden(elements.loadAreaCard, false);
                         dataLoader.loadFile(REMOTE_URL, { label: '网络最新数据', downloadAs: 'tagsd_danbooru_zh.csv' });
                     });
                     
@@ -1686,12 +1717,12 @@
                         tagDetails.update();
                         
                         // 显示加载区
-                        elements.loadAreaCard.classList.remove('hidden');
+                        setHidden(elements.loadAreaCard, false);
                         elements.progressBar.style.width = '0%';
                         elements.statusMessage.textContent = '准备加载数据...';
                         
                         // 隐藏重新加载按钮
-                        elements.reloadAppBtn.classList.add('hidden');
+                        setHidden(elements.reloadAppBtn, true);
                         
                         dataLoader.loadDefault();
                     });
@@ -1755,6 +1786,9 @@
             presetSave: $('wb-save-preset'), presetBaseNode: $('wb-base-node'), presetNegNode: $('wb-neg-node'),
             fillTags: $('wb-fill-tags'), fillOutput: $('wb-fill-output'), fillBase: $('wb-fill-base'),
             model: $('wb-model'), sampler: $('wb-sampler'), scheduler: $('wb-scheduler'),
+            modelArch: $('wb-model-arch'), modelHint: $('wb-model-hint'),
+            modelRescan: $('wb-model-rescan'), modelAll: $('wb-model-all'),
+            modelAllLabel: $('wb-model-all-label'),
             steps: $('wb-steps'), cfg: $('wb-cfg'), width: $('wb-width'), height: $('wb-height'),
             count: $('wb-count'), seed: $('wb-seed'), seedStride: $('wb-seed-stride'), dice: $('wb-dice'), series: $('wb-series'),
             generate: $('wb-generate'), interrupt: $('wb-interrupt'), clear: $('wb-clear'), free: $('wb-free'),
@@ -1844,6 +1878,90 @@
             return E.model.value || (defaults && defaults.model && defaults.model.value) || '';
         }
 
+        /* ---------------- 模型下拉：只列当前工作流能用的（架构匹配） ---------------- */
+        const ARCH_LABEL_CN = { sdxl: 'SDXL', sd1: 'SD1.x', sd2: 'SD2.x', sd3: 'SD3',
+                                flux: 'FLUX', unknown: '架构未知', broken: '损坏/没下完' };
+        let modelScan = null;       // /local/models 的结果（服务端已按架构筛过）
+        let showAllModels = false;  // 「显示全部」开关：默认只显示能用的
+
+        function modelHintText() {
+            const s = modelScan;
+            if (!s) return '';
+            if (!s.ok) return '模型扫描失败：' + (s.error || '未知原因');
+            const label = s.target_label || ARCH_LABEL_CN[s.target_arch] || s.target_arch || '';
+            const usable = s.usable || [], skipped = s.skipped || [];
+            const bits = ['模型扫描：共 ' + s.total + ' 个，能用 ' + usable.length +
+                          ' 个（当前工作流要 ' + label + '）'];
+            if (skipped.length) {
+                const groups = {};
+                skipped.forEach(m => { const k = m.arch || 'unknown'; groups[k] = (groups[k] || 0) + 1; });
+                bits.push('已跳过 ' + skipped.length + ' 个：' +
+                          Object.keys(groups).map(k => (ARCH_LABEL_CN[k] || k) + ' ' + groups[k] + ' 个').join('、'));
+            }
+            if (!usable.length) {
+                bits.push('没有能用的模型 —— 请把 ' + label + ' 系模型放进 ' + s.dir +
+                          '，或点「显示全部」先强行选一个');
+            }
+            return bits.join('　·　');
+        }
+
+        function fillModels() {
+            const s = modelScan;
+            if (!s || !s.ok) {
+                if (E.modelHint) E.modelHint.textContent = modelHintText();
+                return;
+            }
+            const usable = s.usable || [], skipped = s.skipped || [];
+            const usableNames = new Set(usable.map(m => m.name));
+            const list = showAllModels ? usable.concat(skipped) : usable;
+            const prev = preferredModel();
+            E.model.innerHTML = '';
+            if (!list.length) {
+                const o = document.createElement('option');
+                o.value = '';
+                o.textContent = '（没有可用的模型：把模型放进 ' + s.dir + '）';
+                E.model.appendChild(o);
+            }
+            list.forEach(m => {
+                const o = document.createElement('option');
+                o.value = m.name;
+                const ok = usableNames.has(m.name);
+                o.textContent = ok ? m.name
+                    : (m.name + '　（不兼容·' + (ARCH_LABEL_CN[m.arch] || m.arch) + '）');
+                o.title = ok ? ((m.size_gb ? m.size_gb + ' GB　' : '') + (m.note || '')).trim()
+                             : (m.reason || '与当前工作流不匹配');
+                if (m.name === prev) o.selected = true;
+                E.model.appendChild(o);
+            });
+            if (!list.some(m => m.name === prev)) E.model.selectedIndex = 0;
+            E.modelArch.textContent = '(' + (s.target_label || ARCH_LABEL_CN[s.target_arch] || '') + ')';
+            E.modelHint.textContent = modelHintText();
+            E.modelHint.title = skipped.map(m => m.name + '　——　' + (m.reason || '')).join('\n');
+            E.modelAllLabel.textContent = showAllModels ? '只看能用的' : '显示全部';
+        }
+
+        async function loadModels(force) {
+            try {
+                modelScan = await api.get('/local/models' + (force ? '?rescan=1' : ''));
+                fillModels();
+            } catch (err) {
+                modelScan = null;
+                if (E.modelHint) E.modelHint.textContent = '读取模型列表失败：' + err.message;
+            }
+            return modelScan;
+        }
+
+        // 选中被过滤掉的模型时，先说清楚为什么用不了，而不是丢给 ComfyUI 报错
+        function modelBlockReason() {
+            const name = E.model.value;
+            if (!name || !modelScan || !modelScan.ok) return null;
+            const usable = modelScan.usable || [];
+            if (!usable.length) return null;           // 一个能用的都没有：不拦，交给用户判断
+            if (usable.some(m => m.name === name)) return null;
+            const hit = (modelScan.skipped || []).find(m => m.name === name);
+            return hit ? (hit.reason || '与当前工作流不匹配') : '不在当前工作流可用的模型列表里';
+        }
+
         // 启动中的状态栏摘要：把已经读到的工作流默认值显示出来（也是"绕过早退"的可见证据）
         function wfSummary() {
             const d = defaults || {};
@@ -1922,7 +2040,8 @@
                 if (!st.comfy_up) {
                     const wf = wfSummary();
                     setConn(false, 'ComfyUI 正在启动…' + (wf ? ('　· 已读到工作流默认：' + wf) : '') + '　· 下拉框就绪后会自动填充');
-                    if (needsFill(E.model)) fillSelect(E.model, [], '', null);
+                    // 模型列表来自磁盘扫描，不依赖 ComfyUI 是否就绪，所以这里也能先填好
+                    if (needsFill(E.model)) await loadModels(false);
                     if (needsFill(E.sampler)) fillSelect(E.sampler, [], '', RECOMMENDED.sampler);
                     if (needsFill(E.scheduler)) fillSelect(E.scheduler, [], '', RECOMMENDED.scheduler);
                     return;
@@ -1931,7 +2050,7 @@
                 const gb = (v) => (v ? (v / 1073741824).toFixed(1) : null);
                 const vram = gpu.vram_total ? (' · 显存 ' + gb(gpu.vram_free) + '/' + gb(gpu.vram_total) + ' GB') : '';
                 setConn(true, 'ComfyUI 在线' + vram);
-                fillSelect(E.model, st.checkpoints || [], preferredModel());
+                await loadModels(false);        // 只列当前工作流能用的模型（架构匹配）
                 await loadEnums();
             } catch (err) {
                 setConn(false, '未连接到本地服务（请通过 启动.bat 打开页面）');
@@ -1945,7 +2064,7 @@
             if (!st.comfy_up) {
                 const wf = wfSummary();
                 setConn(false, 'ComfyUI 正在启动…' + (wf ? ('　· 已读到工作流默认：' + wf) : '') + '　· 下拉框就绪后会自动填充');
-                if (needsFill(E.model)) fillSelect(E.model, [], '', null);
+                if (needsFill(E.model)) await loadModels(false);
                 return;
             }
             const gpu = ((st.system_stats || {}).devices || [])[0] || {};
@@ -1953,7 +2072,7 @@
             const vram = gpu.vram_total ? (' · 显存 ' + gb(gpu.vram_free) + '/' + gb(gpu.vram_total) + ' GB') : '';
             setConn(true, 'ComfyUI 在线' + vram);
             if (needsFill(E.model)) {
-                fillSelect(E.model, st.checkpoints || [], preferredModel());
+                await loadModels(false);
             }
             // 首屏打开时 ComfyUI 通常还在启动，这里补上采样器/调度器（原来漏了，导致下拉框永远是空的）
             if (needsFill(E.sampler) || needsFill(E.scheduler)) {
@@ -2380,6 +2499,13 @@
                 E.positive.focus();
                 return;
             }
+            // 选中的模型如果当前工作流用不了（架构不符 / 文件没下完），先在这里说清楚
+            const blocked = modelBlockReason();
+            if (blocked) {
+                E.progressText.textContent = '这个模型当前工作流用不了：' + blocked +
+                    '　·　请换一个模型，或点模型旁的「显示全部」确认后再试';
+                return;
+            }
             const body = {
                 positive: positive,
                 series: E.series.value.trim() || null,
@@ -2452,6 +2578,17 @@
         E.dice.addEventListener('click', () => { E.seed.value = Math.floor(Math.random() * 2147483647); });
         E.generate.addEventListener('click', generate);
         E.refresh.addEventListener('click', refresh);
+        // 模型：重新扫描（?rescan=1 强制作废服务端缓存） / 显示全部（把被过滤的也列出来）
+        if (E.modelRescan) E.modelRescan.addEventListener('click', async () => {
+            E.modelRescan.disabled = true;
+            E.modelHint.textContent = '正在重新扫描模型目录…';
+            try { await loadModels(true); }
+            finally { E.modelRescan.disabled = false; }
+        });
+        if (E.modelAll) E.modelAll.addEventListener('click', () => {
+            showAllModels = !showAllModels;
+            fillModels();
+        });
         E.reload.addEventListener('click', reloadGallery);
         E.openDir.addEventListener('click', () => {
             if (currentRunId && currentRunId !== ALL) reveal(null, currentRunId);
@@ -2530,6 +2667,60 @@
 
 
 
+    })();
+    </script>
+
+    <!-- ==================== 资源自检（纯原生 JS，不依赖任何外部库） ==================== -->
+    <script>
+    (function () {
+        'use strict';
+        // 图标字体探测：FA6 会给 .fa-solid 设 display:inline-block，字体没起来时宽度会是 0
+        function iconWorks() {
+            const probe = document.createElement('i');
+            probe.className = 'fa-solid fa-tags';
+            probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden';
+            document.body.appendChild(probe);
+            const ok = probe.offsetWidth > 0;
+            probe.remove();
+            return ok;
+        }
+        // 布局探测：主标签列表带 Tailwind 的 grid 类，样式没生效时它就是个普通 div
+        function layoutWorks() {
+            const list = document.getElementById('tag-list');
+            return list ? getComputedStyle(list).display === 'grid' : true;
+        }
+        function inspect() {
+            const missing = [];
+            if (typeof window.tailwind === 'undefined') missing.push('Tailwind（布局与配色）');
+            if (typeof window.Papa === 'undefined') missing.push('PapaParse（CSV 解析）');
+            if (typeof window.Sortable === 'undefined') missing.push('Sortable（拖拽排序）');
+            const bits = [];
+            if (missing.length) bits.push('未加载：' + missing.join('、'));
+            if (!iconWorks()) bits.push('图标字体未生效');
+            if (!layoutWorks()) bits.push('样式表未生效（布局已退化）');
+            return bits;
+        }
+        // Tailwind 是运行时编译样式，注入 CSS 有先后快慢：多试几次再下结论，避免误报
+        const DELAYS = [400, 1200, 2500];
+        let i = 0;
+        function tick() {
+            const bits = inspect();
+            if (!bits.length) {
+                const banner = document.getElementById('asset-warning');
+                if (banner) banner.style.display = 'none';
+                return;
+            }
+            i += 1;
+            if (i < DELAYS.length) { setTimeout(tick, DELAYS[i] - DELAYS[i - 1]); return; }
+            const banner = document.getElementById('asset-warning');
+            const detail = document.getElementById('asset-warning-detail');
+            if (!banner || !detail) return;
+            detail.textContent = bits.join('　·　') +
+                '　·　请确认 _internal/vendor/ 目录完整（Tailwind / 图标 / 解析库都在里面），然后按 Ctrl+F5 强制刷新。';
+            banner.style.display = 'block';
+        }
+        if (document.readyState === 'complete') setTimeout(tick, DELAYS[0]);
+        else window.addEventListener('load', () => setTimeout(tick, DELAYS[0]));
     })();
     </script>
 

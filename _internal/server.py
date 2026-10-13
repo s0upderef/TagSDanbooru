@@ -18,6 +18,7 @@ import os
 import random
 import re
 import socket
+import struct
 import subprocess
 import sys
 import time
@@ -987,6 +988,222 @@ def _current_text(wf, link):
     return (node.get("inputs") or {}).get("text") if node else None
 
 
+# ================================================================ 模型扫描（只留工作流能用的）
+
+ARCH_LABEL = {
+    "sdxl": "SDXL",
+    "sd1": "SD1.x",
+    "sd2": "SD2.x",
+    "sd3": "SD3",
+    "flux": "FLUX",
+    "unknown": "架构未知",
+    "broken": "损坏或没下完",
+}
+
+MODEL_EXTS = (".safetensors", ".ckpt", ".sft", ".pt", ".pth")
+_MODEL_MIN_BYTES = 1024 * 1024        # 小于 1MB 的当残包 / 占位文件
+_HEADER_CAP = 12 * 1024 * 1024        # safetensors 头部最多读这么多，防极端文件
+_MODEL_CACHE = {}                     # {(路径, mtime, 大小): (架构, 说明)} —— 只重读有变化的文件
+
+
+def _arch_from_name(name):
+    """名字兜底：只有在文件元数据读不出来时才用，属于「疑似」判断。"""
+    low = (name or "").lower()
+    if "flux" in low:
+        return "flux"
+    if any(k in low for k in ("illustrious", "noob", "pony", "animagine", "sdxl", "xl_")):
+        return "sdxl"
+    if any(k in low for k in ("sd15", "sd_15", "sd1.5", "v1-5", "animefull")):
+        return "sd1"
+    if any(k in low for k in ("sd21", "sd_21", "v2-1")):
+        return "sd2"
+    return None
+
+
+def _arch_from_meta(meta):
+    """最准的一路：看写进文件里的元数据（C 站 / 合并工具一般都会写）。"""
+    if not isinstance(meta, dict):
+        return None
+    raw = " ".join(str(meta.get(k, "")) for k in
+                   ("ss_base_model_version", "modelspec.architecture", "ss_sd_model_name"))
+    low = raw.lower()
+    if not low.strip():
+        return None
+    if "flux" in low:
+        return "flux"
+    if "sdxl" in low or "illustrious" in low or "pony" in low:
+        return "sdxl"
+    if "sd3" in low or "stable-diffusion-3" in low:
+        return "sd3"
+    if "sd_v2" in low or "sd2" in low or "stable-diffusion-v2" in low:
+        return "sd2"
+    if "sd_v1" in low or "sd1" in low or "stable-diffusion-v1" in low:
+        return "sd1"
+    return None
+
+
+def _arch_from_tensors(header_text):
+    """元数据缺失时靠张量名判：两个文本编码器 = SDXL，double_blocks = FLUX。"""
+    if '"double_blocks.' in header_text or '"single_blocks.' in header_text:
+        return "flux"
+    if "conditioner.embedders.1" in header_text:
+        return "sdxl"
+    if "conditioner.embedders.0" in header_text or "cond_stage_model" in header_text:
+        return "sd1"
+    return None
+
+
+def _read_safetensors_arch(path):
+    """只读 safetensors 的头部（前 8 字节 = 头部长度 + JSON），不碰后面几 GB 的权重。"""
+    with open(path, "rb") as fh:
+        raw = fh.read(8)
+        if len(raw) != 8:
+            return "broken", "文件太短，不像完整模型"
+        (n,) = struct.unpack("<Q", raw)
+        if n <= 0 or n > _HEADER_CAP:
+            return "broken", "头部长度异常（%.1f MB）" % (n / 1048576.0)
+        head = fh.read(n)
+    text = head.decode("utf-8", "replace")
+    arch = None
+    try:
+        arch = _arch_from_meta(json.loads(text).get("__metadata__"))
+    except Exception:
+        arch = None
+    return (arch or _arch_from_tensors(text) or "unknown"), ""
+
+
+def _inspect_model(path):
+    """判断单个模型文件的架构；带缓存，只有文件变了才重新读。"""
+    try:
+        st = path.stat()
+    except OSError as exc:
+        return "broken", "读不到文件：%s" % exc
+    key = (str(path), int(st.st_mtime), int(st.st_size))
+    hit = _MODEL_CACHE.get(key)
+    if hit:
+        return hit
+
+    if st.st_size < _MODEL_MIN_BYTES:
+        res = ("broken", "只有 %.1f MB，像是没下完" % (st.st_size / 1048576.0))
+    elif path.suffix.lower() == ".safetensors":
+        try:
+            arch, note = _read_safetensors_arch(path)
+        except Exception as exc:
+            arch, note = "broken", "读取失败：%s" % exc
+        if arch == "unknown":
+            guess = _arch_from_name(path.name)
+            if guess:
+                arch, note = guess, "文件里没写元数据，按文件名推测"
+        res = (arch, note)
+    else:
+        # .ckpt / .pt 是 pickle，不去解包；只能靠文件名猜
+        guess = _arch_from_name(path.name)
+        res = (guess or "unknown", "%s 不解析，无法确认架构" % path.suffix.lower())
+
+    _MODEL_CACHE[key] = res
+    return res
+
+
+def _checkpoints_dir():
+    return CMF.get("checkpoints_dir") or os.path.join(CMF["dir"], "models", "checkpoints")
+
+
+def workflow_arch(wf):
+    """当前工作流要什么架构：优先 config 的 comfy.workflow_arch，其次按加载器 / 尺寸推断。"""
+    forced = CMF.get("workflow_arch")
+    if forced:
+        return str(forced).lower()
+    ckpt = find_first(wf, "CheckpointLoaderSimple", "CheckpointLoader")
+    if ckpt:
+        name = (wf[ckpt].get("inputs") or {}).get("ckpt_name") or ""
+        guess = _arch_from_name(name)
+        if guess:
+            return guess
+        latent = find_first(wf, "EmptyLatentImage", "EmptySD3LatentImage")
+        if latent:
+            ins = wf[latent].get("inputs") or {}
+            side = max(int(ins.get("width") or 0), int(ins.get("height") or 0))
+            if side >= 768:
+                return "sdxl"
+            if side:
+                return "sd1"
+        return "sdxl"
+    if find_first(wf, "UNETLoader"):
+        return "flux"
+    return "sdxl"
+
+
+def scan_models(target_arch):
+    """扫 ComfyUI 的 checkpoints 目录：能用的挑出来，其余连原因一起回报。"""
+    ckpt_dir = _checkpoints_dir()
+    out = {"ok": True, "dir": ckpt_dir,
+           "target_arch": target_arch,
+           "target_label": ARCH_LABEL.get(target_arch, target_arch),
+           "total": 0, "usable": [], "skipped": []}
+    try:
+        root = Path(ckpt_dir)
+        files = sorted((p for p in root.rglob("*")
+                        if p.is_file() and p.suffix.lower() in MODEL_EXTS),
+                       key=lambda p: p.as_posix().lower())
+    except Exception as exc:
+        out.update({"ok": False, "error": "扫描模型目录失败：%s" % exc})
+        return out
+
+    for p in files:
+        arch, note = _inspect_model(p)
+        try:
+            size_gb = round(p.stat().st_size / 1073741824.0, 2)
+        except OSError:
+            size_gb = 0.0
+        rel = p.relative_to(root).as_posix()
+        if arch == target_arch:
+            out["usable"].append({"name": rel, "arch": arch, "size_gb": size_gb,
+                                  "note": note or ""})
+        else:
+            why = ARCH_LABEL.get(arch, arch)
+            if note:
+                why += "（%s）" % note
+            out["skipped"].append({"name": rel, "arch": arch, "size_gb": size_gb, "reason": why})
+    out["total"] = len(files)
+    return out
+
+
+async def handle_models(request):
+    """模型下拉用：只返回当前工作流真正能用的 checkpoint。
+
+    数据源是「磁盘扫描」+「ComfyUI 自己的列表」的并集：
+      * 磁盘扫描才能判架构（读 safetensors 头部元数据，不碰权重）；
+      * ComfyUI 的列表能覆盖 extra_model_paths.yaml 挂在项目外的目录 ——
+        这类文件在项目内读不到，会标成「无法确认架构」跳过，「显示全部」里仍能选到。
+    """
+    if request.query.get("rescan"):          # 下拉框旁「重新扫描」= ?rescan=1，强制重判
+        _MODEL_CACHE.clear()
+    try:
+        target = workflow_arch(load_workflow())
+    except Exception:
+        target = str(CMF.get("workflow_arch") or "sdxl").lower()
+
+    res = scan_models(target)
+
+    try:
+        listed = await proxy_json(request.app, "/models/checkpoints")
+    except Exception:
+        listed = None
+    if isinstance(listed, list):
+        res["comfy_total"] = len(listed)
+        known = {m["name"] for m in res["usable"]} | {m["name"] for m in res["skipped"]}
+        for name in listed:
+            if name in known:
+                continue
+            res["skipped"].append({
+                "name": name, "arch": "unknown", "size_gb": 0.0,
+                "reason": "无法确认架构（不在 %s 下，可能来自 extra_model_paths.yaml）" % res["dir"],
+            })
+        res["total"] = len(known) + len([n for n in listed if n not in known])
+    res["skipped"].sort(key=lambda m: m["name"].lower())
+    return json_response(res)
+
+
 async def handle_workflow(request):
     """把当前工作流里的默认值交给界面（模型、采样参数、尺寸、负面词）。"""
     try:
@@ -1020,6 +1237,12 @@ async def handle_workflow(request):
         nodes["latent"] = {"node": latent_id, "width": wf[latent_id]["inputs"].get("width"),
                            "height": wf[latent_id]["inputs"].get("height")}
     info["nodes"] = nodes
+    # 这个工作流要求的模型架构（页面拿它解释「为什么有模型被过滤掉」）
+    try:
+        info["arch"] = workflow_arch(wf)
+    except Exception:
+        info["arch"] = str(CMF.get("workflow_arch") or "sdxl").lower()
+    info["arch_label"] = ARCH_LABEL.get(info["arch"], info["arch"])
     return json_response(info)
 
 
@@ -1462,9 +1685,14 @@ async def on_cleanup(app):
             pass
 
 
+# 字体 MIME（本地化的 Font Awesome 用得到；aiohttp 自带表里没有 .woff2）
+_FONT_MIME = {".woff2": "font/woff2", ".woff": "font/woff",
+              ".ttf": "font/ttf", ".otf": "font/otf"}
+
+
 @web.middleware
 async def no_cache_static(request, handler):
-    """静态文件（页面 / 图片）只走 ETag 协商缓存，别让浏览器拿启发式缓存糊住旧画面。
+    """静态文件（页面 / 图片 / 本地化前端依赖）只走 ETag 协商缓存，别让浏览器拿启发式缓存糊住旧画面。
 
     output/ 里的图随时会被删、被重出；aiohttp 的静态响应只有 ETag / Last-Modified、
     不带 Cache-Control，Chromium 会自己「猜」一个保鲜期 —— 于是明明已经删掉的图，
@@ -1473,6 +1701,11 @@ async def no_cache_static(request, handler):
     resp = await handler(request)
     if isinstance(resp, web.FileResponse):
         resp.headers.setdefault("Cache-Control", "no-cache")
+        # aiohttp 3.13 用的是它自己那份 MimeTypes 表（不认 mimetypes.add_type），
+        # Windows 上 .woff2 会被发成 application/octet-stream —— 这里直接给对的字体 MIME。
+        ext = os.path.splitext(request.path)[1].lower()
+        if ext in _FONT_MIME:
+            resp.headers["Content-Type"] = _FONT_MIME[ext]
     return resp
 
 
@@ -1485,6 +1718,7 @@ def build_app():
     app.router.add_get("/", handle_index)
     app.router.add_get("/local/ping", handle_ping)
     app.router.add_get("/local/status", handle_local_status)
+    app.router.add_get("/local/models", handle_models)
     app.router.add_post("/local/shutdown", handle_shutdown)
     app.router.add_post("/local/generate", handle_generate)
     app.router.add_post("/local/interrupt", handle_interrupt)
