@@ -718,8 +718,17 @@ async def handle_generate(request):
         items.append({"index": i, "prompt_id": data.get("prompt_id"), "seed": per["seed"],
                       "number": data.get("number"), "status": "pending", "images": [], "notes": notes})
 
+    negative = opts.get("negative")
+    if not negative:
+        # 页面不再单独维护负面：记录工作流里实际生效的那份，保证 prompt.json / 回读完整
+        try:
+            _wf = load_workflow()
+            _sid = find_first(_wf, "KSampler", "KSamplerAdvanced")
+            negative = _current_text(_wf, _wf[_sid]["inputs"].get("negative")) if _sid else None
+        except Exception:
+            negative = None
     run = {"run_id": run_id, "created": datetime.now().isoformat(timespec="seconds"),
-           "positive": positive, "negative": opts.get("negative"), "count": count,
+           "positive": positive, "negative": negative, "count": count,
            "series": series, "dir": str(series_dir_of(series) / run_id),
            "items": items, "errors": errors,
            "status": "running" if items else "failed"}
