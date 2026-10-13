@@ -379,6 +379,9 @@
                         </button>
                     </div>
                     
+                    <!-- 人工分类筛选（一级 → 二级联动；仅覆盖已人工分类的高频词条） -->
+                    <div id="l1-filters" class="flex flex-wrap items-center gap-1 pb-1 hidden"></div>
+                    <div id="l2-filters" class="flex flex-wrap items-center gap-1 pb-2 hidden"></div>
                     <div id="tag-list-container" class="flex-grow overflow-hidden no-scrollbar py-1 p-1 min-h-[410px]">
                         <div id="tag-list" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-2"></div>
                     </div>
@@ -702,6 +705,8 @@
                 copyTextBtn: document.getElementById('copy-text-btn'),
                 selectedCount: document.getElementById('selected-count'),
                 allCategoriesBtn: document.getElementById('all-categories'),
+                l1Filters: document.getElementById('l1-filters'),
+                l2Filters: document.getElementById('l2-filters'),
                 tagTooltip: document.getElementById('tag-tooltip'),
                 statsButtonsContainer: document.getElementById('stats-buttons-container'),
                 tagDetailsCard: document.getElementById('tag-details-card'),
@@ -716,6 +721,8 @@
                 selectedTags: [],
                 currentPage: 1,
                 currentCategory: 'all',
+                currentL1: 'all',
+                currentL2: 'all',
                 currentFormat: 'space-underscore',
                 selectedTagsLanguage: 'cn',
                 mainSortable: null,
@@ -815,6 +822,8 @@
                         void countSpan.offsetWidth;
                         countSpan.classList.add('stat-pulse');
                     });
+
+                    buildL1Row();
                 }
             };
             
@@ -827,6 +836,8 @@
                     state.selectedTags = [];
                     state.currentPage = 1;
                     
+                    state.currentL1 = 'all';
+                    state.currentL2 = 'all';
                     elements.tagList.innerHTML = '';
                     elements.paginationControls.innerHTML = '';
                     tagRenderer.renderSelectedTags(); // 确保占位符在加载时正确显示
@@ -1256,6 +1267,14 @@
                         if (state.currentCategory !== 'all' && tag[1] !== state.currentCategory) {
                             return false;
                         }
+
+                        // 按人工分类过滤（一级 / 二级）
+                        if (state.currentL1 !== 'all' && (tag[5] || '').trim() !== state.currentL1) {
+                            return false;
+                        }
+                        if (state.currentL2 !== 'all' && (tag[6] || '').trim() !== state.currentL2) {
+                            return false;
+                        }
                         
                         // 按搜索词过滤
                         if (query) {
@@ -1391,6 +1410,86 @@
                 return elements.tagList.querySelector(`[data-en-tag="${enTag}"]`);
             };
             
+            // ---- 人工分类筛选（一级 → 二级联动；只覆盖已人工分类的高频词条）----
+            const L2_TOP_N = 20;
+
+            const countByColumn = (idx) => {
+                const m = new Map();
+                state.allTags.forEach(tag => {
+                    const v = (tag[idx] || '').trim();
+                    if (v) m.set(v, (m.get(v) || 0) + 1);
+                });
+                return m;
+            };
+
+            const makeCatBtn = (label, attr, value, count) => {
+                const btn = document.createElement('button');
+                btn.className = 'category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600';
+                btn.dataset[attr] = value;
+                btn.innerHTML = '<i class="fa-solid fa-layer-group w-3 text-center"></i><span>' + label + '</span>' +
+                                (count === null ? '' : '<span class="opacity-60">' + count + '</span>');
+                return btn;
+            };
+
+            const syncBtnRow = (row, attr, current) => {
+                if (!row) return;
+                row.querySelectorAll('button').forEach(btn => {
+                    const on = btn.dataset[attr] === current;
+                    btn.classList.toggle('bg-blue-500', on);
+                    btn.classList.toggle('text-white', on);
+                    btn.classList.toggle('hover:bg-blue-600', on);
+                    btn.classList.toggle('bg-slate-700', !on);
+                    btn.classList.toggle('text-slate-200', !on);
+                    btn.classList.toggle('hover:bg-slate-600', !on);
+                });
+            };
+
+            const updateL1ButtonStyles = () => syncBtnRow(elements.l1Filters, 'l1', state.currentL1);
+            const updateL2ButtonStyles = () => syncBtnRow(elements.l2Filters, 'l2', state.currentL2);
+
+            const buildL2Row = () => {
+                const scoped = state.currentL1 === 'all'
+                    ? state.allTags
+                    : state.allTags.filter(tag => (tag[5] || '').trim() === state.currentL1);
+                const counts = new Map();
+                scoped.forEach(tag => {
+                    const v = (tag[6] || '').trim();
+                    if (v) counts.set(v, (counts.get(v) || 0) + 1);
+                });
+                if (counts.size === 0) {
+                    elements.l2Filters.classList.add('hidden');
+                    elements.l2Filters.innerHTML = '';
+                    return;
+                }
+                elements.l2Filters.classList.remove('hidden');
+                elements.l2Filters.innerHTML = '';
+                elements.l2Filters.title = '二级分类（' + (state.currentL1 === 'all' ? '全库前 ' + L2_TOP_N : state.currentL1) + '）';
+                elements.l2Filters.appendChild(makeCatBtn('全部', 'l2', 'all', null));
+                Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, L2_TOP_N).forEach(([name, n]) => {
+                    elements.l2Filters.appendChild(makeCatBtn(name, 'l2', name, n));
+                });
+                updateL2ButtonStyles();
+            };
+
+            const buildL1Row = () => {
+                const counts = countByColumn(5);
+                if (counts.size === 0) {
+                    elements.l1Filters.classList.add('hidden');
+                    elements.l2Filters.classList.add('hidden');
+                    return;
+                }
+                elements.l1Filters.classList.remove('hidden');
+                elements.l1Filters.title = '一级分类：仅覆盖已人工分类的 ' +
+                    Array.from(counts.values()).reduce((a, b) => a + b, 0) + ' 条热门词条';
+                elements.l1Filters.innerHTML = '';
+                elements.l1Filters.appendChild(makeCatBtn('全部', 'l1', 'all', null));
+                Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).forEach(([name, n]) => {
+                    elements.l1Filters.appendChild(makeCatBtn(name, 'l1', name, n));
+                });
+                buildL2Row();
+                updateL1ButtonStyles();
+            };
+
             const updateCategoryButtonStyles = () => {
                 elements.categoryFilters.querySelectorAll('button').forEach(btn => {
                     btn.classList.remove('bg-blue-500', 'text-white', 'hover:bg-blue-600');
@@ -1428,7 +1527,11 @@
                     elements.resetSearchBtn.addEventListener('click', () => {
                         elements.searchBox.value = '';
                         state.currentCategory = 'all';
+                        state.currentL1 = 'all';
+                        state.currentL2 = 'all';
                         updateCategoryButtonStyles();
+                        buildL2Row();
+                        updateL1ButtonStyles();
                         tagManager.applyFilters();
                     });
                     
@@ -1444,6 +1547,25 @@
                         }
                         
                         updateCategoryButtonStyles();
+                        tagManager.applyFilters();
+                    });
+
+                    // 人工分类（一级 / 二级）筛选事件
+                    elements.l1Filters.addEventListener('click', e => {
+                        const btn = e.target.closest('button');
+                        if (!btn || !btn.dataset.l1) return;
+                        state.currentL1 = btn.dataset.l1;
+                        state.currentL2 = 'all';
+                        updateL1ButtonStyles();
+                        buildL2Row();
+                        tagManager.applyFilters();
+                    });
+
+                    elements.l2Filters.addEventListener('click', e => {
+                        const btn = e.target.closest('button');
+                        if (!btn || !btn.dataset.l2) return;
+                        state.currentL2 = btn.dataset.l2;
+                        updateL2ButtonStyles();
                         tagManager.applyFilters();
                     });
 
@@ -1513,6 +1635,8 @@
                             selectedTags: [],
                             currentPage: 1,
                             currentCategory: 'all',
+                            currentL1: 'all',
+                            currentL2: 'all',
                             currentFormat: 'space-underscore',
                             selectedTagsLanguage: 'cn',
                             categoryCounts: {
