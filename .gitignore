@@ -27,3 +27,6 @@ __pycache__/
 *.tmp
 Thumbs.db
 Desktop.ini
+
+# 快捷方式：绝对路径 + 本机信息，不进仓库（图标 TagSDanbooru.ico 是进仓库的）
+*.lnk

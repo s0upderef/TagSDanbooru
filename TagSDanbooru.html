@@ -354,6 +354,20 @@
                             </button>
                         </div>
                     </div>
+                    <!-- 提示词唯一的「手写」入口：粘一段英文提示词 -> 解析成已选标签（工作台的提示词就是这块板面） -->
+                    <div class="flex items-stretch gap-1 mb-2">
+                        <input id="prompt-parse-input" type="text"
+                               placeholder="粘贴提示词：1girl, solo, (official art:1.15) … 回车即解析成已选标签"
+                               class="flex-grow min-w-0 h-[30px] px-2 text-xs bg-slate-900 border border-slate-600 rounded-md text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                        <button id="prompt-parse-append" title="解析后追加到已选标签后面，不覆盖现有选择"
+                                class="h-[30px] px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600 whitespace-nowrap">
+                            <i class="fa-solid fa-circle-plus"></i> 解析并加入
+                        </button>
+                        <button id="prompt-parse-replace" title="解析后替换掉当前全部已选标签"
+                                class="h-[30px] px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-sky-600 text-white hover:bg-sky-500 whitespace-nowrap">
+                            <i class="fa-solid fa-arrows-rotate"></i> 替换全部
+                        </button>
+                    </div>
                     <div id="selected-tags-container" class="flex-grow min-h-[135px] bg-slate-900 rounded-md p-2 flex flex-wrap content-start gap-1 overflow-y-auto">
                         <div class="flex flex-col items-center justify-center w-full h-full text-slate-500">
                             <i class="fa-solid fa-tags text-3xl mb-2"></i>
@@ -472,25 +486,28 @@
                 <!-- 左：提示词 -->
                 <div class="space-y-2">
                     <div class="flex flex-wrap justify-between items-center gap-1">
-                        <label class="text-xs font-semibold text-slate-300">正向提示词</label>
+                        <label class="text-xs font-semibold text-slate-300">正向提示词
+                            <span id="wb-prompt-count" class="text-slate-400 font-normal">0 个标签</span>
+                            <span class="text-slate-500 font-normal">＝ 上面的「已选标签」</span>
+                        </label>
                         <div class="flex gap-1">
-                            <button id="wb-fill-tags" class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
-                                <i class="fa-solid fa-arrow-left"></i> 用已选标签
+                            <button id="wb-prompt-copy" class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                                <i class="fa-solid fa-copy"></i> 复制
                             </button>
-                            <button id="wb-fill-output" class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
-                                <i class="fa-solid fa-arrow-left"></i> 用格式化文本
-                            </button>
-                            <button id="wb-fill-base" class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
-                                <i class="fa-solid fa-rotate-left"></i> 还原
+                            <button id="wb-load-recipe" title="把工作流里保存的配方词（节点 10）解析成已选标签"
+                                    class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                                <i class="fa-solid fa-rotate-left"></i> 用工作流配方
                             </button>
                         </div>
                     </div>
-                    <textarea id="wb-positive" rows="5"
-                        class="w-full bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-slate-200 no-scrollbar resize-y focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-                        placeholder="1girl, solo, ...（点右上角按钮可从已选标签一键填入）"></textarea>
+                    <!-- 这里只是「已选标签」的镜像预览（只读）：工作台不再单独存一份提示词 -->
+                    <div id="wb-prompt-preview"
+                         class="w-full min-h-[86px] max-h-[180px] overflow-y-auto bg-slate-900 border border-slate-600 rounded-md p-2 text-xs font-mono text-emerald-300 whitespace-pre-wrap break-words no-scrollbar">
+                        <span class="text-slate-500">还没有选标签 —— 在左边的「已选标签」区点标签，或用「粘贴提示词」解析一段。</span>
+                    </div>
 
                     <p class="text-xs text-slate-500 leading-relaxed" id="wb-hint">
-                        提示词会写入工作流的「特殊要求」节点（自动定位），不会改动你的 json 文件；要改固定的正向 base / 负面，请用下面的「工作流预设词」。
+                        出图用的正向提示词就是上面的「已选标签」（工作台不再单独存一份），写入工作流的「特殊要求」节点，不会改动你的 json 文件；固定的正向 base / 负面用下面的「工作流预设词」。
                     </p>
 
                     <details class="rounded-md border border-slate-700 bg-slate-900/40">
@@ -546,11 +563,11 @@
                         </div>
                         <div>
                             <label class="text-xs text-slate-300">步数 steps</label>
-                            <input id="wb-steps" type="number" min="1" max="150" value="20" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                            <input id="wb-steps" type="number" min="1" max="150" value="25" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500">
                         </div>
                         <div>
                             <label class="text-xs text-slate-300">CFG</label>
-                            <input id="wb-cfg" type="number" step="0.5" min="1" max="30" value="6.5" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                            <input id="wb-cfg" type="number" step="0.5" min="1" max="30" value="6" class="w-full h-8 bg-slate-900 border border-slate-600 rounded-md px-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500">
                         </div>
                         <div>
                             <label class="text-xs text-slate-300">宽 width</label>
@@ -641,15 +658,20 @@
                 <div id="wb-gallery" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2"></div>
 
                 <!-- 灯箱：页面内放大看图，← → 切换，Esc 关闭 -->
-                <div id="wb-lightbox" class="hidden fixed inset-0 z-50 bg-black/85 items-center justify-center">
-                    <img id="wb-lightbox-img" class="max-w-[92vw] max-h-[88vh] object-contain rounded-lg shadow-2xl" alt="">
-                    <div id="wb-lightbox-cap" class="absolute bottom-4 left-0 right-0 text-center text-xs text-slate-300"></div>
+                <div id="wb-lightbox" class="hidden fixed inset-0 z-50 bg-black/85 flex-col items-center justify-center gap-2 p-3 pt-14 pb-3">
+                    <img id="wb-lightbox-img" class="max-w-[92vw] max-h-[56vh] object-contain rounded-lg shadow-2xl" alt="">
+                    <!-- 中文对照：把这一张所属批次的提示词按原顺序逐条显示「中文 + english」 -->
+                    <div class="w-full max-w-[92vw]">
+                        <div id="wb-lightbox-tag-info" class="text-[11px] text-slate-400 mb-1"></div>
+                        <div id="wb-lightbox-tags" class="flex flex-wrap gap-1 overflow-y-auto max-h-[22vh] pr-1"></div>
+                    </div>
+                    <div id="wb-lightbox-cap" class="text-center text-xs text-slate-300"></div>
                     <button id="wb-lightbox-prev" title="上一张"
-                            class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
+                            class="absolute left-3 top-[28%] -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
                     <button id="wb-lightbox-next" title="下一张"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
+                            class="absolute right-3 top-[28%] -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
                         <i class="fa-solid fa-chevron-right"></i>
                     </button>
                     <button id="wb-lightbox-close" title="关闭 (Esc)"
@@ -740,6 +762,9 @@
                 loadAreaCard: document.getElementById('load-area-card'),
                 reloadAppBtn: document.getElementById('reload-app-btn'),
                 selectedTagsContainer: document.getElementById('selected-tags-container'),
+                promptParseInput: document.getElementById('prompt-parse-input'),
+                promptParseAppend: document.getElementById('prompt-parse-append'),
+                promptParseReplace: document.getElementById('prompt-parse-replace'),
                 toggleLangBtn: document.getElementById('toggle-lang-btn'),
                 clearSelectedBtn: document.getElementById('clear-selected-btn'),
                 saveWildcardBtn: document.getElementById('save-wildcard-btn'),
@@ -1026,6 +1051,7 @@
                             
                             // 初始化拖拽排序
                             initSortable();
+                            signalTagsReady();
                             
                             // 显示重新加载按钮
                             // elements.reloadAppBtn.classList.remove('hidden');
@@ -1066,6 +1092,7 @@
                     setHidden(elements.loadAreaCard, true);
                     setHidden(elements.reloadAppBtn, false);
                     initSortable();
+                    signalTagsReady();
                 },
 
                 // 开页面立刻加载：优先用服务端预转的 JSON，拿不到就回退 CSV 路径。
@@ -1183,12 +1210,13 @@
                             <div class="flex flex-col items-center justify-center w-full h-full text-slate-500 p-4 text-center">
                                 <i class="fa-solid fa-hand-pointer text-3xl mb-2"></i>
                                 <p class="text-sm font-semibold">这里是已选标签区</p>
-                                <p class="text-xs mt-1">您可以从下方的“标签列表”点击添加标签，或在左侧“格式化文本”区粘贴并解析您的提示词。</p>
+                                <p class="text-xs mt-1">点上面的「粘贴提示词」把一整句解析成标签，或从下方的“标签列表”逐个挑选。</p>
                             </div>
                         `;
                         
                         // 修复：清空已选标签时更新格式化输出
                         formatter.updateFormattedOutput();
+                        tagRenderer.notifyBoardChanged();
                         return;
                     }
                     
@@ -1221,8 +1249,11 @@
                         
                         const tagEl = document.createElement('div');
                         tagEl.className = tagElClass;
+                        // 从粘贴的提示词里解析进来的权重（(tag:1.15)）显示成角标，重建提示词时原样带出
+                        const weightBadge = tag.__weight
+                            ? `<sup class="text-[9px] opacity-80 ml-0.5" title="权重 ${tag.__weight}">${tag.__weight}</sup>` : '';
                         tagEl.innerHTML = `
-                            <span class="truncate">${displayText}</span>
+                            <span class="truncate">${displayText}${weightBadge}</span>
                             <button class="remove-selected-tag-btn font-bold text-lg leading-none ${isUnmatched ? 'text-red-400' : `text-${category.color}-500 hover:text-${category.color}-700`}">×</button>
                         `;
                         
@@ -1255,6 +1286,12 @@
                     });
                     
                     formatter.updateFormattedOutput();
+                    tagRenderer.notifyBoardChanged();
+                },
+
+                // 板面变了就广播一次：工作台的提示词预览/出图都跟着它走
+                notifyBoardChanged: () => {
+                    document.dispatchEvent(new CustomEvent('tagsd:board-changed'));
                 },
                 
                 renderPagination: () => {
@@ -1761,6 +1798,114 @@
                 }
             };
             
+            /* ---------------- 与工作台的桥：提示词 = 已选标签（唯一来源） ---------------- */
+
+            // 标签库是否已加载完（工作台要等它就绪，才能把一段提示词正确解析成标签）
+            const isTagsReady = () => !!(state.allTags && state.allTags.length);
+            const signalTagsReady = () => document.dispatchEvent(new CustomEvent("tagsd:tags-ready"));
+
+            // en -> 标签行 的索引：惰性建一次；换词库（state.allTags 被换成新数组）自动重建
+            let tagIndex = null, tagIndexFor = null;
+            // 归一化用于「查词库」：忽略大小写/多余空格，并把下划线当空格
+            // （词库里多词标签写成 long_hair，而手写提示词习惯写 long hair）
+            const normalizeKey = (s) => String(s || "").trim().toLowerCase().replace(/[_\s]+/g, " ");
+            const ensureTagIndex = () => {
+                if (tagIndexFor === state.allTags) return tagIndex;
+                tagIndex = new Map();
+                (state.allTags || []).forEach(row => {
+                    if (row && row[0]) tagIndex.set(normalizeKey(row[0]), row);
+                });
+                tagIndexFor = state.allTags;
+                return tagIndex;
+            };
+
+            // 解析一段提示词：逗号/换行/全角逗号分隔；认 (tag:1.15)、[tag]、转义 \( \) \[ \]
+            const parsePromptText = (text) => {
+                const out = [], seen = new Set();
+                String(text || "").split(/[,\n，、]/).forEach(chunk => {
+                    let s = chunk.trim();
+                    if (!s) return;
+                    s = s.replace(/\\([()\[\]])/g, "$1");          // \( \) \[ \] 这类转义还原成字面括号
+                    let weight = "";
+                    const wrap = s.match(/^[(\[](.*)[)\]]$/);
+                    if (wrap) {
+                        const inner = wrap[1].trim();
+                        const wm = inner.match(/^(.*?):\s*([0-9]*\.?[0-9]+)$/);
+                        if (wm) { s = wm[1].trim(); weight = wm[2]; } else { s = inner; }
+                    }
+                    // 原文保留（未匹配时按用户写的原样出图），另算一个归一化 key 用来查词库
+                    const rawText = s.replace(/^:+|:+$/g, "").trim();
+                    let key = normalizeKey(rawText);
+                    if (!key) return;
+                    const index = ensureTagIndex();
+                    if (!weight) {
+                        // 裸写 solo:1.3 也当权重（只在左边能对上词库时才拆，免得误伤带冒号的词）
+                        const bare = rawText.match(/^(.*?):([0-9]*\.?[0-9]+)$/);
+                        if (bare && index.has(normalizeKey(bare[1]))) { key = normalizeKey(bare[1]); weight = bare[2]; }
+                    }
+                    if (seen.has(key)) return;
+                    seen.add(key);
+                    const row = index.get(key);
+                    if (row) {
+                        const copy = row.slice();
+                        if (weight) copy.__weight = weight;
+                        out.push(copy);
+                    } else {
+                        // 词库里没有（长尾词/写法不同）：保留原文，标成未匹配，照样能出图
+                        const raw = [rawText, "", "", "", "", "", "", ""];
+                        if (weight) raw.__weight = weight;
+                        out.push(raw);
+                    }
+                });
+                return out;
+            };
+
+            const applyParsed = (text, replaceAll) => {
+                const parsed = parsePromptText(text);
+                if (!parsed.length) return 0;
+                const base = replaceAll ? [] : state.selectedTags.slice();
+                parsed.forEach(row => {
+                    if (!base.some(t => t[0] === row[0])) base.push(row);
+                });
+                state.selectedTags = base;
+                tagRenderer.renderSelectedTags();
+                if (tagRenderer.renderTagList) tagRenderer.renderTagList();   // 下方列表的已选高亮同步
+                return parsed.length;
+            };
+
+            const promptTextNow = () => state.selectedTags
+                .map(t => t.__weight ? ("(" + t[0] + ":" + t.__weight + ")") : t[0])
+                .join(", ");
+
+            // 工作台通过 window.TagSD 使用标签板（两个 script 不共享作用域，只靠这几个方法与自定义事件通信）
+            window.TagSD = {
+                ready: isTagsReady,
+                lookupTag: (en) => ensureTagIndex().get(normalizeKey(en)) || null,
+                loadPromptText: (text, opts) => {
+                    if (!isTagsReady()) return -1;               // -1 = 标签库还没加载完，调用方稍后重试
+                    return applyParsed(text, !(opts && opts.append));
+                },
+                getPromptText: promptTextNow
+            };
+
+            // 「粘贴提示词」入口：解析成已选标签（工作台不再单独维护一份提示词）
+            const doParseInput = (replaceAll) => {
+                const box = elements.promptParseInput;
+                const text = box ? box.value : "";
+                if (!text.trim()) { elements.statusMessage.textContent = "先在输入框里粘贴一段提示词"; return; }
+                if (!isTagsReady()) { elements.statusMessage.textContent = "标签库还在加载，稍等一下再解析"; return; }
+                const n = applyParsed(text, replaceAll);
+                if (!n) { elements.statusMessage.textContent = "没解析出任何标签"; return; }
+                if (box) box.value = "";
+                elements.statusMessage.textContent = (replaceAll ? "已替换为 " : "已加入 ") + n +
+                    " 个标签" + (replaceAll ? "" : "（重复的已跳过，未匹配的按原文保留）");
+            };
+            if (elements.promptParseAppend) elements.promptParseAppend.addEventListener("click", () => doParseInput(false));
+            if (elements.promptParseReplace) elements.promptParseReplace.addEventListener("click", () => doParseInput(true));
+            if (elements.promptParseInput) elements.promptParseInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doParseInput(false); }
+            });
+
             // 公开方法
             return {
                 init: () => {
@@ -1781,10 +1926,10 @@
         const $ = (id) => document.getElementById(id);
         const E = {
             dot: $('wb-dot'), status: $('wb-status'), refresh: $('wb-refresh'),
-            positive: $('wb-positive'),
+            promptPreview: $('wb-prompt-preview'), promptCount: $('wb-prompt-count'),
+            promptCopy: $('wb-prompt-copy'), loadRecipe: $('wb-load-recipe'),
             presetPositiveBase: $('wb-positive-base'), presetNegativeBase: $('wb-negative-base'),
             presetSave: $('wb-save-preset'), presetBaseNode: $('wb-base-node'), presetNegNode: $('wb-neg-node'),
-            fillTags: $('wb-fill-tags'), fillOutput: $('wb-fill-output'), fillBase: $('wb-fill-base'),
             model: $('wb-model'), sampler: $('wb-sampler'), scheduler: $('wb-scheduler'),
             modelArch: $('wb-model-arch'), modelHint: $('wb-model-hint'),
             modelRescan: $('wb-model-rescan'), modelAll: $('wb-model-all'),
@@ -1798,6 +1943,7 @@
             seriesbar: $('wb-seriesbar'), runbar: $('wb-runbar'),
             openDir: $('wb-open-dir'), delRun: $('wb-del-run'), reload: $('wb-reload'),
             lightbox: $('wb-lightbox'), lightboxImg: $('wb-lightbox-img'),
+            lightboxTags: $('wb-lightbox-tags'), lightboxTagInfo: $('wb-lightbox-tag-info'),
             lightboxCap: $('wb-lightbox-cap'), lightboxPrev: $('wb-lightbox-prev'),
             lightboxNext: $('wb-lightbox-next'), lightboxClose: $('wb-lightbox-close')
         };
@@ -1832,12 +1978,14 @@
         // 推荐组合：只在下拉文字后面挂个提示，**绝不改动你选的值**
         const RECOMMENDED = {
             sampler: {
+                'euler_ancestral': '快 · 工作流默认',
                 'dpmpp_3m_sde': '实测最干净 · 推荐',
                 'dpmpp_2m_sde': '细节更锐 · 次选',
-                'dpmpp_2m': '稳 · 工作流默认'
+                'dpmpp_2m': '稳 · 更慢'
             },
             scheduler: {
-                'karras': '通用 · 推荐',
+                'simple': '工作流默认',
+                'karras': '通用 · 更慢',
                 'sgm_uniform': '偏软 · 次选'
             }
         };
@@ -1980,8 +2128,8 @@
                 const req = info.KSampler.input.required;
                 const d = (defaults && defaults.sampler) || {};
                 // 预选项优先取工作流里的值，消除「先填哪个」的顺序依赖
-                const prefSampler = E.sampler.value || d.sampler_name || 'dpmpp_2m';
-                const prefSched = E.scheduler.value || d.scheduler || 'karras';
+                const prefSampler = E.sampler.value || d.sampler_name || 'euler_ancestral';
+                const prefSched = E.scheduler.value || d.scheduler || 'simple';
                 fillSelect(E.sampler, req.sampler_name[0], prefSampler, RECOMMENDED.sampler);
                 fillSelect(E.scheduler, req.scheduler[0], prefSched, RECOMMENDED.scheduler);
             } catch (err) {
@@ -2013,9 +2161,10 @@
                     if (n.latent.width) E.width.value = n.latent.width;
                     if (n.latent.height) E.height.value = n.latent.height;
                 }
-                // 配方框写的是「节点 10」（你的配方）；固定的「节点 9」前缀单独放在下面的预设词里
-                if (n.positive && n.positive.target_text && !E.positive.value.trim()) {
-                    E.positive.value = n.positive.target_text;
+                // 配方框写的是「节点 10」（你的配方）；固定的「节点 9」前缀单独放在下面的预设词里。
+                // 工作台没有独立的提示词框了：把配方解析成「已选标签」，一打开页面就能直接出图。
+                if (n.positive && n.positive.target_text && !promptFromBoard().trim()) {
+                    loadPromptIntoBoard(n.positive.target_text);
                 }
                 if (n.positive && n.positive.base != null) {
                     E.presetPositiveBase.value = n.positive.base;
@@ -2080,8 +2229,12 @@
             }
         }
 
-        /* ---------------- 提示词填充 ---------------- */
-        function tagsFromBoard() {
+        /* ---------------- 提示词：唯一来源是标签侧的「已选标签」 ---------------- */
+        // 桥在第一个 script（window.TagSD）；万一拿不到（脚本没加载），退回直接读板面 DOM
+        let pendingPromptText = null;      // 标签库还没就绪时先记下来，就绪后再解析
+
+        function promptFromBoard() {
+            if (window.TagSD && window.TagSD.getPromptText) return window.TagSD.getPromptText();
             const chips = document.querySelectorAll('#selected-tags-container [data-en-tag]');
             const list = [];
             chips.forEach(c => {
@@ -2091,12 +2244,52 @@
             return list.join(', ');
         }
 
-        function fillPositive(text, emptyNote) {
-            if (!text) { E.progressText.textContent = emptyNote || '没有可填入的内容'; return; }
-            E.positive.value = text;
-            const n = text.split(',').filter(s => s.trim()).length;
-            E.progressText.textContent = '已填入 ' + n + ' 个标签';
+        function promptTagCount(text) {
+            return String(text || '').split(',').map(s => s.trim()).filter(Boolean).length;
         }
+
+        // 提示词预览：和真正提交的是同一份数据，点出图前瞄一眼就知道要发什么
+        function refreshPromptPreview() {
+            const text = promptFromBoard();
+            if (E.promptCount) E.promptCount.textContent = promptTagCount(text) + ' 个标签';
+            if (!E.promptPreview) return;
+            if (!text) {
+                E.promptPreview.innerHTML = '<span class="text-slate-500">还没有选标签 —— 在左边的「已选标签」区点标签，或用「粘贴提示词」解析一段。</span>';
+            } else {
+                E.promptPreview.textContent = text;
+            }
+        }
+
+        // 把一段英文提示词解析成「已选标签」；标签库没加载完就先排队，等它就绪再解析
+        function loadPromptIntoBoard(text, opts) {
+            if (!text || !String(text).trim()) return 0;
+            if (!(window.TagSD && window.TagSD.loadPromptText)) {
+                E.progressText.textContent = '标签区脚本还没就绪，稍后再试';
+                return 0;
+            }
+            const n = window.TagSD.loadPromptText(text, opts || {});
+            if (n === -1) {
+                pendingPromptText = { text: text, opts: opts || {} };
+                E.progressText.textContent = '标签库还在加载，稍后自动把提示词解析成标签…';
+                return 0;
+            }
+            E.progressText.textContent = '已把 ' + n + ' 个标签解析到「已选标签」（词库里没有的按原文保留）';
+            return n;
+        }
+
+        // 滚到「已选标签」区：那里现在是提示词唯一的入口
+        function scrollToBoard() {
+            const board = document.getElementById('selected-tags-container');
+            if (board) board.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        document.addEventListener('tagsd:board-changed', refreshPromptPreview);
+        document.addEventListener('tagsd:tags-ready', () => {
+            if (!pendingPromptText) return;
+            const p = pendingPromptText;
+            pendingPromptText = null;
+            setTimeout(() => loadPromptIntoBoard(p.text, p.opts), 0);
+        });
 
         /* ---------------- 结果画廊（含历史浏览 / 灯箱 / 打开文件夹） ---------------- */
         const galleryImages = [];     // 当前画廊中的图片，供灯箱 ← → 导航
@@ -2128,8 +2321,74 @@
             if (!g) return;
             E.lightboxImg.src = g.src;
             E.lightboxCap.textContent = (lbIndex + 1) + ' / ' + galleryImages.length + '　seed ' + g.seed;
+            renderLightboxTags(g);
             E.lightbox.classList.remove('hidden');
             E.lightbox.classList.add('flex');
+        }
+
+        // 看图时的中文对照：把这一张的提示词按原顺序拆开，逐条显示「中文 + english」。
+        // 只看不改：任何异常都只影响这块面板，绝不打断看图。
+        function renderLightboxTags(g) {
+            if (!E.lightboxTags || !E.lightboxTagInfo) return;
+            const lookup = (en) => (window.TagSD && window.TagSD.lookupTag) ? window.TagSD.lookupTag(en) : null;
+            try {
+                E.lightboxTags.innerHTML = '';
+                const items = [];
+                String((g && g.prompt) || '').split(',').forEach(chunk => {
+                    let s = chunk.trim();
+                    if (!s) return;
+                    s = s.replace(/\\([()\[\]])/g, '$1');
+                    let weight = '';
+                    const wrap = s.match(/^[\(\[](.*)[\)\]]$/);
+                    if (wrap) {
+                        const inner = wrap[1].trim();
+                        const wm = inner.match(/^(.*?):\s*([0-9]*\.?[0-9]+)$/);
+                        if (wm) { s = wm[1].trim(); weight = wm[2]; } else { s = inner; }
+                    }
+                    if (!s) return;
+                    let row = lookup(s);
+                    if (!row && !weight) {
+                        // 裸写 solo:1.3 也当权重（只在左边能对上词库时才拆）
+                        const bare = s.match(/^(.*?):\s*([0-9]*\.?[0-9]+)$/);
+                        if (bare && lookup(bare[1].trim())) { s = bare[1].trim(); weight = bare[2]; row = lookup(s); }
+                    }
+                    items.push({ en: s, cn: row ? (row[4] || '') : '', weight: weight });
+                });
+                if (!items.length) {
+                    E.lightboxTagInfo.textContent = '这一张没有记录到提示词（老批次可能没有 prompt.json），只有中文对照面板是空的';
+                    return;
+                }
+                const known = items.filter(i => i.cn).length;
+                E.lightboxTagInfo.textContent = '提示词 ' + items.length + ' 个 · 有中文对照 ' + known + ' 个' +
+                    (known < items.length ? ('（还有 ' + (items.length - known) + ' 个长尾词条暂未收录中文）') : '');
+                items.forEach(it => {
+                    const chip = document.createElement('span');
+                    chip.className = it.cn
+                        ? 'inline-flex items-baseline gap-1 rounded px-1.5 py-0.5 bg-sky-500/15 border border-sky-500/30'
+                        : 'inline-flex items-baseline gap-1 rounded px-1.5 py-0.5 bg-slate-700/60 border border-slate-600/70';
+                    chip.title = it.en + (it.cn ? ('　中文：' + it.cn) : '　（词库里没有这条，按原文出图）');
+                    const cn = document.createElement('span');
+                    cn.className = it.cn ? 'text-[13px] font-semibold text-sky-200' : 'text-[12px] text-slate-300';
+                    cn.textContent = it.cn || it.en;
+                    chip.appendChild(cn);
+                    if (it.cn) {
+                        const en = document.createElement('span');
+                        en.className = 'text-[11px] text-slate-400';
+                        en.textContent = it.en;
+                        chip.appendChild(en);
+                    }
+                    if (it.weight) {
+                        const w = document.createElement('sup');
+                        w.className = 'text-[9px] text-amber-300';
+                        w.textContent = it.weight;
+                        chip.appendChild(w);
+                    }
+                    E.lightboxTags.appendChild(chip);
+                });
+            } catch (err) {
+                E.lightboxTags.innerHTML = '';
+                E.lightboxTagInfo.textContent = '中文对照渲染失败：' + err.message;
+            }
         }
 
         function closeLightbox() {
@@ -2213,15 +2472,15 @@
                 }
             }
             E.progressText.textContent = '已回填 seed ' + it.seed + ' 的参数' + note + '，改完提示词就能再出图';
-            E.positive.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            scrollToBoard();
         }
 
-        // ↙ 把这一批的提示词载入输入框，便于在其基础上修改
+        // ↙ 把这一批的提示词解析成「已选标签」，便于在其基础上改
         function loadRunPrompt(run) {
             if (!run) return;
-            if (run.positive) E.positive.value = run.positive;
-            E.progressText.textContent = '已载入这一批的提示词，可在此基础上修改';
-            E.positive.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (!run.positive) { E.progressText.textContent = '这一批没有记录到提示词'; return; }
+            loadPromptIntoBoard(run.positive, { append: false });
+            scrollToBoard();
         }
 
         // 合并视图里不同批次的 index 会重名，所以用 uid 生成单元格 id
@@ -2270,7 +2529,10 @@
                 img.className = 'w-full h-full object-cover cursor-zoom-in';
                 img.addEventListener('click', () => openLightbox(src));
                 cell.appendChild(img);
-                galleryImages.push({ src: src, seed: it.seed });
+                // 记下这张图所属批次的提示词：灯箱用它做中文对照
+                const ownerRun = (it.run_id && runById(it.run_id)) || run;
+                galleryImages.push({ src: src, seed: it.seed, runId: (ownerRun && ownerRun.run_id) || null,
+                                     prompt: (ownerRun && ownerRun.positive) || '' });
 
                 const caption = document.createElement('span');
                 caption.className = 'absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-1 py-0.5 truncate';
@@ -2493,10 +2755,10 @@
 
         async function generate() {
             if (busy) return;
-            const positive = E.positive.value.trim();
+            const positive = promptFromBoard().trim();
             if (!positive) {
-                E.progressText.textContent = '正向提示词不能为空';
-                E.positive.focus();
+                E.progressText.textContent = '还没有选标签：正向提示词 = 左侧「已选标签」，点几个标签，或用「粘贴提示词」解析一段';
+                scrollToBoard();
                 return;
             }
             // 选中的模型如果当前工作流用不了（架构不符 / 文件没下完），先在这里说清楚
@@ -2545,14 +2807,21 @@
             startPolling(res.run_id);
         }
         /* ---------------- 事件绑定 ---------------- */
-        E.fillTags.addEventListener('click', () => fillPositive(tagsFromBoard(), '已选标签区是空的'));
-        E.fillOutput.addEventListener('click', () => {
-            const out = document.getElementById('formatted-output');
-            fillPositive(out ? out.value.trim() : '', '格式化文本是空的');
+        refreshPromptPreview();      // 启动时先按板面内容把预览/计数初始化
+        if (E.promptCopy) E.promptCopy.addEventListener('click', async () => {
+            const text = promptFromBoard();
+            if (!text) { E.progressText.textContent = '还没有选标签，没有可复制的提示词'; return; }
+            try {
+                await navigator.clipboard.writeText(text);
+                E.progressText.textContent = '已复制 ' + promptTagCount(text) + ' 个标签到剪贴板';
+            } catch (err) {
+                E.progressText.textContent = '复制失败：' + err.message;
+            }
         });
-        E.fillBase.addEventListener('click', () => {
+        if (E.loadRecipe) E.loadRecipe.addEventListener('click', () => {
             const t = defaults && defaults.positive && defaults.positive.target_text;
-            fillPositive(t || '', '工作流里没有默认配方词');
+            if (!t) { E.progressText.textContent = '工作流里没有保存的配方词（节点 10）'; return; }
+            loadPromptIntoBoard(t, { append: false });
         });
         E.presetSave.addEventListener('click', async () => {
             E.presetSave.disabled = true;
