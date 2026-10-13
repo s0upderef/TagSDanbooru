@@ -30,7 +30,7 @@ except Exception:
     pass
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-TAGS = ROOT / "_internal" / "data" / "danbooru_all_2.json"
+TAGS = ROOT / "_internal" / "data" / "tagsd_danbooru_zh.json"
 
 BUCKETS = ((10 ** 5, "OK   >=10万"), (10 ** 4, "OK   >=1万"),
            (10 ** 3, "WARN 1千-1万"), (1, "BAD  <1千"), (0, "BAD  热度0（废弃/别名）"))

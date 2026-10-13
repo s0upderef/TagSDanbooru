@@ -24,8 +24,8 @@
     "extra_args": ["--disable-auto-launch"]
   },
   "paths": {
-    "tag_csv": "_internal/data/danbooru_all_2.csv",
-    "tag_json": "_internal/data/danbooru_all_2.json",
+    "tag_csv": "_internal/data/tagsd_danbooru_zh.csv",
+    "tag_json": "_internal/data/tagsd_danbooru_zh.json",
     "workflow": "_internal/workflows/illSdxl.json",
     "output_dir": "_internal/output",
     "sweeps_dir": "_internal/sweeps",

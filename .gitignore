@@ -7,7 +7,7 @@ _internal/sweeps/
 
 # ============ Danbooru 标签数据（随仓库附带快照，见 README「前置要求」）============
 _internal/data/*
-!_internal/data/danbooru_all_2.csv
+!_internal/data/tagsd_danbooru_zh.csv
 
 # ============ 个人配置 / 提示词库 ============
 _internal/config.json

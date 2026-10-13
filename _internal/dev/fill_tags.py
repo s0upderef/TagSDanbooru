@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""把“行号;;中文;;一级;;二级”形式的映射合并进 danbooru_all_2.csv（只填空格子）。
+"""把“行号;;中文;;一级;;二级”形式的映射合并进 tagsd_danbooru_zh.csv（只填空格子）。
 
 用法: python _internal/dev/fill_tags.py [映射文件]
 映射文件默认取 %TEMP%/tagsd_zh_map.txt；首次运行会备份 CSV。
@@ -7,7 +7,7 @@
 import csv, io, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-CSV = os.path.join(ROOT, '_internal', 'data', 'danbooru_all_2.csv')
+CSV = os.path.join(ROOT, '_internal', 'data', 'tagsd_danbooru_zh.csv')
 MAP = sys.argv[1] if 2 <= len(sys.argv) else os.path.join(os.environ.get('TEMP', '.'), 'tagsd_zh_map.txt')
 BACKUP = CSV + '.prefill.bak'
 

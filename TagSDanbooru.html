@@ -288,7 +288,7 @@
             </div>
             <div class="flex-shrink-0 flex items-center gap-2">
                 <!-- 更新CSV：从 GitHub 拉取最新数据，页面立即使用，并自动下载同名文件以便覆盖本地 -->
-                <button id="update-csv-btn" title="从 GitHub 下载最新数据：页面立即使用，并自动下载 danbooru_all_2.csv 覆盖到项目目录" class="h-[36px] px-3 text-sm flex items-center justify-center gap-2 rounded-md transition-colors duration-200 bg-emerald-500 text-white hover:bg-emerald-600">
+                <button id="update-csv-btn" title="从 GitHub 下载最新数据：页面立即使用，并自动下载 tagsd_danbooru_zh.csv 覆盖到项目目录" class="h-[36px] px-3 text-sm flex items-center justify-center gap-2 rounded-md transition-colors duration-200 bg-emerald-500 text-white hover:bg-emerald-600">
                     <i class="fa-solid fa-cloud-arrow-down"></i> 更新CSV
                 </button>
                 <button id="reload-app-btn" class="h-[36px] px-3 text-sm flex items-center justify-center gap-2 rounded-md transition-colors duration-200 bg-blue-500 text-white hover:bg-blue-600 hidden">
@@ -301,7 +301,7 @@
         <div id="load-area-card" class="mb-3 p-3 bg-slate-800 rounded-lg shadow-sm border border-slate-700 space-y-2">
             <div class="space-y-2">
                 <div class="flex items-center gap-2">
-                    <input type="text" id="csv-url" value="_internal/data/danbooru_all_2.csv" class="w-full px-3 h-[36px] border border-slate-600 rounded-md focus:outline-none focus:border-transparent focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm">
+                    <input type="text" id="csv-url" value="_internal/data/tagsd_danbooru_zh.csv" class="w-full px-3 h-[36px] border border-slate-600 rounded-md focus:outline-none focus:border-transparent focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm">
                     <button id="reset-url-btn" title="恢复默认URL" class="h-[36px] w-10 flex items-center justify-center rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
                         <i class="fa-solid fa-rotate-left"></i>
                     </button>
@@ -660,9 +660,9 @@
         const TagAssistant = (() => {
             // 常量定义
             // 默认数据源：项目内 _internal/data 下的数据文件（推荐用本地服务器打开，或在“选择本地文件”中手动加载）
-            const DEFAULT_URL = '_internal/data/danbooru_all_2.csv';
+            const DEFAULT_URL = '_internal/data/tagsd_danbooru_zh.csv';
             // 网络数据源：本仓库发布的最新快照（“更新CSV”按钮使用）
-            const REMOTE_URL = 'https://raw.githubusercontent.com/s0upderef/TagSDanbooru/refs/heads/main/_internal/data/danbooru_all_2.csv';
+            const REMOTE_URL = 'https://raw.githubusercontent.com/s0upderef/TagSDanbooru/refs/heads/main/_internal/data/tagsd_danbooru_zh.csv';
             const TAGS_PER_PAGE = 28;
             // 热度异常阈值：官方数据里存在少量被人工“提权”的词条（1000 万+），
             // 会错误地霸占列表最前方；载入时统一按 0 处理，保证排序 / 热度徽章 / 悬停提示三处一致。
@@ -1493,7 +1493,7 @@
                         elements.csvUrlInput.value = REMOTE_URL;
                         // 展开加载区，便于查看下载/解析进度与结果
                         elements.loadAreaCard.classList.remove('hidden');
-                        dataLoader.loadFile(REMOTE_URL, { label: '网络最新数据', downloadAs: 'danbooru_all_2.csv' });
+                        dataLoader.loadFile(REMOTE_URL, { label: '网络最新数据', downloadAs: 'tagsd_danbooru_zh.csv' });
                     });
                     
                     elements.toggleLangBtn.addEventListener('click', () => {
