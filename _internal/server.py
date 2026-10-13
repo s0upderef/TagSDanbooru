@@ -996,18 +996,82 @@ async def handle_workflow(request):
         ins = wf[sampler_id]["inputs"]
         nodes["sampler"] = {"node": sampler_id,
                             **{k: ins.get(k) for k in ("steps", "cfg", "sampler_name", "scheduler", "denoise")}}
-        nodes["negative"] = {"text": _current_text(wf, ins.get("negative"))}
+        neg_link = ins.get("negative")
+        nodes["negative"] = {"node": (neg_link[0] if neg_link else None),
+                             "text": _current_text(wf, neg_link)}
         pos_link = ins.get("positive")
         prims = _link_nodes(wf, [pos_link[0]]) if pos_link else []
+        target_id = prims[-1] if prims else (pos_link[0] if pos_link else None)
         nodes["positive"] = {"chain": prims,
                              "base": wf[prims[0]]["inputs"].get("value") if prims else None,
-                             "target": prims[-1] if prims else (pos_link[0] if pos_link else None)}
+                             "target": target_id,
+                             "target_text": _current_text(wf, [target_id, 0]) if target_id else None}
     latent_id = find_first(wf, "EmptyLatentImage", "EmptySD3LatentImage")
     if latent_id:
         nodes["latent"] = {"node": latent_id, "width": wf[latent_id]["inputs"].get("width"),
                            "height": wf[latent_id]["inputs"].get("height")}
     info["nodes"] = nodes
     return json_response(info)
+
+
+async def handle_workflow_prompts(request):
+    """把界面上的「工作流预设词」（正向 base = 第一个前缀节点，负面 = 负面链路）写回工作流文件。
+
+    与出图的临时替换不同：这里是**真的改** PTH["workflow"] 这个 json，所以先写临时文件再 os.replace。
+    """
+    try:
+        opts = await request.json()
+    except Exception:
+        return json_response({"ok": False, "error": "请求体必须是 JSON"}, 400)
+    if not isinstance(opts, dict):
+        return json_response({"ok": False, "error": "请求体必须是 JSON"}, 400)
+    try:
+        wf = load_workflow()
+    except Exception as exc:
+        return json_response({"ok": False, "error": "读取工作流失败: %s" % exc}, 500)
+
+    sampler_id = find_first(wf, "KSampler", "KSamplerAdvanced")
+    if not sampler_id:
+        return json_response({"ok": False, "error": "工作流里找不到 KSampler"}, 400)
+    ins = wf[sampler_id]["inputs"]
+    result = {}
+
+    if "positive_base" in opts:
+        text = opts.get("positive_base") or ""
+        pos_link = ins.get("positive")
+        prims = _link_nodes(wf, [pos_link[0]]) if pos_link else []
+        if not prims:
+            return json_response({"ok": False, "error": "找不到正向的固定前缀节点"}, 400)
+        wf[prims[0]]["inputs"]["value"] = text
+        result["positive_base"] = {"node": prims[0], "chars": len(text)}
+
+    if "negative" in opts:
+        text = opts.get("negative") or ""
+        neg_link = ins.get("negative")
+        if not neg_link:
+            return json_response({"ok": False, "error": "找不到负面链路"}, 400)
+        prims = _link_nodes(wf, [neg_link[0]])
+        if prims:
+            wf[prims[-1]]["inputs"]["value"] = text
+            result["negative"] = {"node": prims[-1], "chars": len(text)}
+        else:
+            node = wf.get(neg_link[0])
+            if node and isinstance(node.get("inputs"), dict) and "text" in node["inputs"]:
+                node["inputs"]["text"] = text
+                result["negative"] = {"node": neg_link[0], "chars": len(text)}
+            else:
+                return json_response({"ok": False, "error": "无法定位负面提示词节点"}, 400)
+
+    path = abspath(PTH["workflow"])
+    try:
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(json.dumps(wf, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+    except Exception as exc:
+        return json_response({"ok": False, "error": "写入工作流失败: %s" % exc}, 500)
+
+    log("工作流预设词已更新：%s" % result)
+    return json_response({"ok": True, "nodes": result, "path": PTH["workflow"]})
 
 
 # ================================================================ 页面窗口（单实例）
@@ -1419,6 +1483,7 @@ def build_app():
     app.router.add_get("/local/runs", handle_runs)
     app.router.add_get("/local/run/{run_id}", handle_run)
     app.router.add_get("/local/workflow", handle_workflow)
+    app.router.add_post("/local/workflow/prompts", handle_workflow_prompts)
     app.router.add_post("/local/reveal", handle_reveal)
     app.router.add_post("/local/delete", handle_delete)
     app.router.add_route("*", "/api/{tail:.*}", handle_api_proxy)

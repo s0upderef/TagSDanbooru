@@ -484,8 +484,31 @@
                         class="w-full bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-slate-200 no-scrollbar resize-y focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                         placeholder="留空则沿用工作流里的负面词"></textarea>
                     <p class="text-xs text-slate-500 leading-relaxed" id="wb-hint">
-                        提示词会写入工作流的「特殊要求」节点（自动定位），你的 json 文件不会被修改。
+                        提示词会写入工作流的「特殊要求」节点（自动定位），不会改动你的 json 文件；要改固定的正向 base / 负面，请用下面的「工作流预设词」。
                     </p>
+
+                    <details class="rounded-md border border-slate-700 bg-slate-900/40">
+                        <summary class="cursor-pointer select-none px-2 py-1.5 text-xs font-semibold text-slate-300">工作流预设词（改动会写进 illSdxl.json）</summary>
+                        <div class="space-y-2 px-2 pb-2">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <label class="text-xs text-slate-300">正向 base <span class="text-slate-500" id="wb-base-node"></span></label>
+                                <button id="wb-save-preset" class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-amber-600 text-white hover:bg-amber-500">
+                                    <i class="fa-solid fa-floppy-disk"></i> 保存到工作流
+                                </button>
+                            </div>
+                            <textarea id="wb-positive-base" rows="4"
+                                class="w-full bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-slate-200 no-scrollbar resize-y focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                                placeholder="固定前缀，拼在每条正向最前面"></textarea>
+                            <label class="text-xs text-slate-300 block">负面 <span class="text-slate-500" id="wb-neg-node"></span></label>
+                            <textarea id="wb-negative-base" rows="3"
+                                class="w-full bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-slate-200 no-scrollbar resize-y focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                                placeholder="工作流里固定的负面词"></textarea>
+                            <p class="text-xs text-slate-500 leading-relaxed">
+                                这两项是配方底层的固定词，保存后会写回 <span class="text-slate-400">_internal/workflows/illSdxl.json</span>，
+                                之后每次出图立即生效，不用重启。
+                            </p>
+                        </div>
+                    </details>
                 </div>
                 <!-- 右：参数与操作 -->
                 <div class="space-y-2">
@@ -580,7 +603,7 @@
                     </span>
                     <div class="flex items-center gap-2">
                         <span class="text-xs text-slate-500" id="wb-gallery-info">尚未出图</span>
-                        <button id="wb-reload" title="重新扫描 _internal/output/ 并刷新画廊 —— 新出的图（尤其是命令行练的图）要点这里才会出现"
+                        <button id="wb-reload" title="重新扫描 _internal/output/ 并刷新画廊（进页面时已自动加载一次）"
                                 class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-sky-600 text-white hover:bg-sky-500">
                             <i class="fa-solid fa-rotate-right"></i> 刷新图片
                         </button>
@@ -1732,6 +1755,8 @@
         const E = {
             dot: $('wb-dot'), status: $('wb-status'), refresh: $('wb-refresh'),
             positive: $('wb-positive'), negative: $('wb-negative'),
+            presetPositiveBase: $('wb-positive-base'), presetNegativeBase: $('wb-negative-base'),
+            presetSave: $('wb-save-preset'), presetBaseNode: $('wb-base-node'), presetNegNode: $('wb-neg-node'),
             fillTags: $('wb-fill-tags'), fillOutput: $('wb-fill-output'), fillBase: $('wb-fill-base'),
             model: $('wb-model'), sampler: $('wb-sampler'), scheduler: $('wb-scheduler'),
             steps: $('wb-steps'), cfg: $('wb-cfg'), width: $('wb-width'), height: $('wb-height'),
@@ -1875,8 +1900,18 @@
                     if (n.latent.height) E.height.value = n.latent.height;
                 }
                 if (n.negative && n.negative.text) E.negative.value = n.negative.text;
-                if (n.positive && n.positive.base && !E.positive.value.trim()) {
-                    E.positive.value = n.positive.base;
+                // 配方框写的是「节点 10」（你的配方）；固定的「节点 9」前缀单独放在下面的预设词里
+                if (n.positive && n.positive.target_text && !E.positive.value.trim()) {
+                    E.positive.value = n.positive.target_text;
+                }
+                if (n.positive && n.positive.base != null) {
+                    E.presetPositiveBase.value = n.positive.base;
+                    E.presetBaseNode.textContent = (n.positive.chain && n.positive.chain.length)
+                        ? '（节点 ' + n.positive.chain[0] + '）' : '';
+                }
+                if (n.negative && n.negative.text != null) {
+                    E.presetNegativeBase.value = n.negative.text;
+                    E.presetNegNode.textContent = n.negative.node ? '（节点 ' + n.negative.node + '）' : '';
                 }
                 wfDefaultsApplied = true;    // 只应用一次，之后点「刷新」不会清掉你正在编辑的参数
             } catch (err) { /* 静默 */ }
@@ -2248,8 +2283,7 @@
         }
 
         /* 拉取 _internal/output/ 的全部历史并重建画廊。
-           只在三种情况下被调用：点「刷新图片」、删图之后、自己出图完成之后。
-           打开页面时不再自动调用 —— 免得命令行练的图自己跑到页面上。 */
+           调用时机：打开页面（boot）、点「刷新图片」、删图之后、自己出图完成之后。 */
         async function loadHistory(selectRun) {
             let d;
             try { d = await api.get('/local/runs'); } catch (err) { return; }
@@ -2297,8 +2331,7 @@
         }
 
         /* 窗口重新获得焦点时同步一次画廊 —— 命令行练图 / 删图后切回窗口即可看到最新结果，
-           不必再手点「刷新图片」。只在「画廊已经加载过」之后生效：刚打开页面时仍然不自动拉，
-           命令行练的图不会自己冒出来（保留原来的设计）。 */
+           不必再手点「刷新图片」。只在「画廊已经加载过」之后生效（进页面时已自动拉过一次）。 */
         window.addEventListener('focus', async () => {
             if (!galleryLoaded || gallerySyncing || pollTimer || busy) return;
             gallerySyncing = true;
@@ -2399,8 +2432,29 @@
             fillPositive(out ? out.value.trim() : '', '格式化文本是空的');
         });
         E.fillBase.addEventListener('click', () => {
-            const base = defaults && defaults.positive && defaults.positive.base;
-            fillPositive(base || '', '工作流里没有基础正向词');
+            const t = defaults && defaults.positive && defaults.positive.target_text;
+            fillPositive(t || '', '工作流里没有默认配方词');
+        });
+        E.presetSave.addEventListener('click', async () => {
+            E.presetSave.disabled = true;
+            E.progressText.textContent = '正在保存工作流预设词…';
+            try {
+                const r = await api.post('/local/workflow/prompts', {
+                    positive_base: E.presetPositiveBase.value,
+                    negative: E.presetNegativeBase.value,
+                });
+                if (r && r.ok) {
+                    E.progressText.textContent = '预设词已写入工作流，下次出图即生效';
+                    wfDefaultsApplied = false;      // 让下一次刷新重新读盘
+                    loadWorkflow(true);
+                } else {
+                    E.progressText.textContent = '保存失败：' + ((r && r.error) || '未知原因');
+                }
+            } catch (err) {
+                E.progressText.textContent = '保存失败：' + err.message;
+            } finally {
+                E.presetSave.disabled = false;
+            }
         });
         E.dice.addEventListener('click', () => { E.seed.value = Math.floor(Math.random() * 2147483647); });
         E.generate.addEventListener('click', generate);
@@ -2451,11 +2505,18 @@
 
         function boot() {
             refresh();
-            // 不再自动 loadHistory()：命令行练的图不该自己冒到页面上。
-            // 想看已有出图请点「刷新图片」；自己出图完成后仍然会自动显示那一批（见 startPolling）。
+            // 进页面就把 _internal/output/ 里的既有出图拉出来（原设计刻意不自动扫，现改为自动加载）
             E.gallery.dataset.sig = '';
-            E.gallery.innerHTML = '<p class="text-xs text-slate-500 col-span-full">点右上角「刷新图片」加载已有出图。</p>';
-            E.galleryInfo.textContent = '未加载（点「刷新图片」）';
+            (async () => {
+                E.gallery.innerHTML = '<p class="text-xs text-slate-500 col-span-full">正在加载已有出图…</p>';
+                E.galleryInfo.textContent = '正在加载…';
+                await loadHistory();
+                if (!galleryLoaded) {
+                    // loadHistory 请求失败会直接 return，不会置 galleryLoaded
+                    E.gallery.innerHTML = '<p class="text-xs text-slate-500 col-span-full">加载失败，可点右上角「刷新图片」重试。</p>';
+                    E.galleryInfo.textContent = '加载失败';
+                }
+            })();
             // 记住上次用的系列名：同一个主题继续迭代时不用每次重打
             try {
                 const s = localStorage.getItem('tagsd.series');
