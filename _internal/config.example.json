@@ -26,7 +26,7 @@
   "paths": {
     "tag_csv": "_internal/data/tagsd_danbooru_zh.csv",
     "tag_json": "_internal/data/tagsd_danbooru_zh.json",
-    "workflow": "_internal/workflows/illSdxl.json",
+    "workflow": "_internal/workflows/workflow.json",
     "output_dir": "_internal/output",
     "sweeps_dir": "_internal/sweeps",
     "logs_dir": "_internal/logs"

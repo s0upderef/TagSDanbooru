@@ -50,7 +50,7 @@ FALLBACK_CFG = {
               "startup_timeout_sec": 240, "extra_args": ["--disable-auto-launch"]},
     "paths": {"tag_csv": "_internal/data/tagsd_danbooru_zh.csv",
               "tag_json": "_internal/data/tagsd_danbooru_zh.json",
-              "workflow": "_internal/workflows/illSdxl.json",
+              "workflow": "_internal/workflows/workflow.json",
               "output_dir": "_internal/output",
               "sweeps_dir": "_internal/sweeps",
               "logs_dir": "_internal/logs"},
@@ -1157,11 +1157,17 @@ _MODEL_CACHE = {}                     # {(路径, mtime, 大小): (架构, 说�
 
 
 def _arch_from_name(name):
-    """名字兜底：只有在文件元数据读不出来时才用，属于「疑似」判断。"""
+    """名字兜底：只有在文件元数据读不出来时才用，属于「疑似」判断。
+
+    这里只是「按模型文件名里的常见关键词」猜架构 —— **不代表本项目默认用哪个模型**，
+    SDXL 系各家命名（Illustrious / NoobAI / Pony / Animagine / …）都算 sdxl。
+    """
     low = (name or "").lower()
     if "flux" in low:
         return "flux"
-    if any(k in low for k in ("illustrious", "noob", "pony", "animagine", "sdxl", "xl_")):
+    if any(k in low for k in ("sdxl", "sd_xl", "xl_", "xl-v", "illustrious", "noob", "noobai",
+                              "pony", "animagine", "kohaku", "wai", "juggernaut", "dreamshaper",
+                              "realvis", "counterfeit", "meinamix")):
         return "sdxl"
     if any(k in low for k in ("sd15", "sd_15", "sd1.5", "v1-5", "animefull")):
         return "sd1"
@@ -1181,7 +1187,7 @@ def _arch_from_meta(meta):
         return None
     if "flux" in low:
         return "flux"
-    if "sdxl" in low or "illustrious" in low or "pony" in low:
+    if any(k in low for k in ("sdxl", "sd_xl", "illustrious", "noobai", "noob", "pony", "animagine")):
         return "sdxl"
     if "sd3" in low or "stable-diffusion-3" in low:
         return "sd3"

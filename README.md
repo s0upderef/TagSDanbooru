@@ -28,7 +28,7 @@
 
 - **正向提示词就是上面的「已选标签」**，一份数据两处用；要改就改标签板（或直接粘贴解析）。
 - **出图时不动已有画廊**：新批次画在独立的「本次出图」区，已经出好的图原地保留。
-- 参数（模型 / 采样器 / 步数 / CFG / 尺寸 / 张数 / 系列）默认从 `_internal/workflows/illSdxl.json` 读取；**画风由那张工作流的「正向base」（节点 9）决定**，页面「工作流预设词」里可以直接改并保存。
+- 参数（模型 / 采样器 / 步数 / CFG / 尺寸 / 张数 / 系列）默认从工作流 `_internal/workflows/workflow.json` 读取；**换成你自己的工作流也行**：把 ComfyUI 导出的 API 格式 JSON 放进 `_internal/workflows/`，再改 `_internal/config.json` 的 `paths.workflow` 即可（模型换成你自己的就在那张工作流的 Checkpoint 节点）。**画风由工作流的「正向base」（节点 9）决定**，页面「工作流预设词」里可以直接改并保存。
 - 出图按**系列**归档：`_internal/output/<系列>/<批次>/01_seedXXX.png` 加一份 `prompt.json`。
 
 ## 🖼 结果画廊
@@ -42,7 +42,7 @@
 - 来源：danbooru **2025-05-01** 快照，15 万行，随仓库附带 `_internal/data/tagsd_danbooru_zh.csv`。
 - **中文**：热度前 20,000 名 100% 补齐，长尾按批推进。
 - **分类**：12 个一级（人物 / 构图取景 / 背景 / 画面 / 物件 / 元标签 / 反向 / 内置分类-禁，加查询用的 kontext指令 / 角色 / 画师 / 作品），二级做过合并（最多 16 个）；画师 / 角色 / 作品名不铺分类。
-- 前 20k 实用词条已分类 **84%**，其余按热度逐批补，待办清单在 `_internal/dev/reports/unmatched_20000.txt`。
+- 前 20k 实用词条已分类 **85%**，其余按热度逐批补，待办清单在 `_internal/dev/reports/unmatched_20000.txt`。
 - 工具：`classify_tags.py`（分类 + 二级合并）、`audit_tags.py`（覆盖率体检）、`check_prompt.py`（写词前体检）、`gen.py`（命令行出图）、`contact_sheet.py`（出图后拼检视图）。
 
 ## 📸 数据源
