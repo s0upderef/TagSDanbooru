@@ -43,6 +43,12 @@
         #search-box::-webkit-search-cancel-button {
             filter: invert(0.7);         /* 深色底下的原生清除按钮 */
         }
+        /* 一级 / 二级分类两排按钮样式一样，容易看混：二级那排加分割线 + 行首小标签（JS 里插入） */
+        #l2-filters {
+            border-top: 1px solid #475569;   /* slate-600：比卡片底色亮一档，才看得清 */
+            margin-top: 6px;
+            padding-top: 8px;
+        }
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -393,7 +399,7 @@
                     
                     <!-- 人工分类筛选（一级 → 二级联动；仅覆盖已人工分类的高频词条） -->
                     <div id="l1-filters" class="flex flex-wrap items-center gap-1 pb-1 hidden"></div>
-                    <div id="l2-filters" class="flex flex-wrap items-center gap-1 pb-1 hidden"></div>
+                    <div id="l2-filters" class="flex flex-wrap items-center gap-1 pb-1 pt-2 mt-1 border-t border-slate-600 hidden"></div>
                     <div id="l1-note" class="hidden text-[11px] leading-snug text-slate-500 pb-2">分类按钮只覆盖<span class="text-slate-400">已整理过的常用词条</span>（人气前两万名里的绝大多数）；更冷门的长尾标签只有中文、不带分类，找它们请用上面的搜索框。</div>
                     <div id="tag-list-container" class="flex-grow overflow-hidden no-scrollbar py-1 p-1 min-h-[410px]">
                         <div id="tag-list" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-2"></div>
@@ -1537,6 +1543,14 @@
                 return btn;
             };
 
+            // 行首的小标签（一级 / 二级）：两排按钮样式一样，加个前缀才不会看混
+            const makeCatLabel = (text) => {
+                const s = document.createElement('span');
+                s.className = 'text-[10px] leading-none text-slate-500 shrink-0 mr-0.5 select-none';
+                s.textContent = text;
+                return s;
+            };
+
             const syncBtnRow = (row, attr, current) => {
                 if (!row) return;
                 row.querySelectorAll('button').forEach(btn => {
@@ -1569,6 +1583,7 @@
                 }
                 elements.l2Filters.classList.remove('hidden');
                 elements.l2Filters.innerHTML = '';
+                elements.l2Filters.appendChild(makeCatLabel('二级'));
                 elements.l2Filters.title = '二级分类（' + (state.currentL1 === 'all' ? '全库前 ' + L2_TOP_N : state.currentL1) + '）';
                 elements.l2Filters.appendChild(makeCatBtn('全部', 'l2', 'all', null));
                 const rank2 = prefRank(L2_PREF[state.currentL1]);
@@ -1597,6 +1612,7 @@
                     '不带分类，找它们请用上面的搜索框。';
                 elements.l1Filters.title = '一级分类：仅覆盖已人工分类的 ' + knownN + ' 条热门词条';
                 elements.l1Filters.innerHTML = '';
+                elements.l1Filters.appendChild(makeCatLabel('一级'));
                 elements.l1Filters.appendChild(makeCatBtn('全部', 'l1', 'all', null));
                 const rank1 = prefRank(L1_ORDER);
                 Array.from(counts.entries())
