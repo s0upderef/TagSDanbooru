@@ -1509,7 +1509,28 @@
             };
             
             // ---- 人工分类筛选（一级 → 二级联动；只覆盖已人工分类的高频词条）----
-            const L2_TOP_N = 20;
+            // 二级按钮最多显示几个（合并后最多的一级是「人物」15 个，都显示得下）
+            const L2_TOP_N = 24;
+            // 按钮顺序：写提示词最常用的「人物 / 构图取景 / 背景」排前面，
+            // kontext 指令、角色、画师、作品这类"查名字用"的垫到最后
+            const L1_ORDER = ['人物', '构图取景', '背景', '画面', '物件', '元标签', '反向', '内置分类-禁',
+                              'kontext指令', '角色', '画师', '作品'];
+            const L2_PREF = {
+                '人物': ['服装', '五官', '表情', '发色', '发型', '体貌特征', '姿势动作', '配饰', '汉服',
+                         '体形与肤色', '职业', '对象与数量', '性行为', '其他'],
+                '构图取景': ['全身', '半身', '特写', '镜头', '视角', '视线', '构图'],
+                '背景': ['纯色背景', '户外', '室内', '场景', '氛围'],
+                '画面': ['画质', '光照', '艺术风格', '装饰'],
+                '元标签': ['图注', '翻译', '媒介', '状态'],
+                'kontext指令': ['编辑指令', '参考图'],
+                '反向': ['负面词'],
+                '内置分类-禁': ['R18'],
+                '作品': ['原创', '其他作品']
+            };
+            const prefRank = (pref) => (name) => {
+                const i = (pref || []).indexOf(name);
+                return i < 0 ? 999 : i;
+            };
 
             const countByColumn = (idx) => {
                 const m = new Map();
@@ -1563,9 +1584,13 @@
                 elements.l2Filters.innerHTML = '';
                 elements.l2Filters.title = '二级分类（' + (state.currentL1 === 'all' ? '全库前 ' + L2_TOP_N : state.currentL1) + '）';
                 elements.l2Filters.appendChild(makeCatBtn('全部', 'l2', 'all', null));
-                Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, L2_TOP_N).forEach(([name, n]) => {
-                    elements.l2Filters.appendChild(makeCatBtn(name, 'l2', name, n));
-                });
+                const rank2 = prefRank(L2_PREF[state.currentL1]);
+                Array.from(counts.entries())
+                    .sort((a, b) => (rank2(a[0]) - rank2(b[0])) || (b[1] - a[1]))
+                    .slice(0, L2_TOP_N)
+                    .forEach(([name, n]) => {
+                        elements.l2Filters.appendChild(makeCatBtn(name, 'l2', name, n));
+                    });
                 updateL2ButtonStyles();
             };
 
@@ -1583,9 +1608,12 @@
                     Array.from(counts.values()).reduce((a, b) => a + b, 0) + ' 条热门词条';
                 elements.l1Filters.innerHTML = '';
                 elements.l1Filters.appendChild(makeCatBtn('全部', 'l1', 'all', null));
-                Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).forEach(([name, n]) => {
-                    elements.l1Filters.appendChild(makeCatBtn(name, 'l1', name, n));
-                });
+                const rank1 = prefRank(L1_ORDER);
+                Array.from(counts.entries())
+                    .sort((a, b) => (rank1(a[0]) - rank1(b[0])) || (b[1] - a[1]))
+                    .forEach(([name, n]) => {
+                        elements.l1Filters.appendChild(makeCatBtn(name, 'l1', name, n));
+                    });
                 buildL2Row();
                 updateL1ButtonStyles();
             };

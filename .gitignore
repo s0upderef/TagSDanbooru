@@ -13,6 +13,7 @@ _internal/data/*
 _internal/config.json
 _internal/dev/prompts/
 _internal/dev/_preview/
+_internal/dev/reports/
 _internal/dev/README.full.md
 _internal/assets/
 
