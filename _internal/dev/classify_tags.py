@@ -120,9 +120,9 @@ MERGE = [
     ("画面", "视线", "构图取景", "视线"),
     ("画面", "视角", "构图取景", "视角"),
     # R18 / 负面词
-    ("内置分类-禁", "", "内置分类-禁", "R18"),
-    ("内置分类-禁", "性行为", "内置分类-禁", "R18"),
-    ("内置分类-禁", "胸", "内置分类-禁", "R18"),
+    ("限制级", "", "限制级", "R18"),
+    ("限制级", "性行为", "限制级", "R18"),
+    ("限制级", "胸", "限制级", "R18"),
     ("反向", "", "反向", "负面词"),
     ("反向", "负面提示", "反向", "负面词"),
     # ---- 第二轮合并：按「穿在哪 / 长在哪」重排，少而正交 ----
@@ -134,10 +134,10 @@ MERGE = [
     ("人物", "职业", "人物", "身份"),
     ("背景", "户外", "背景", "场景"),
     ("背景", "室内", "背景", "场景"),
-    ("元标签", "翻译", "元标签", "图注"),
-    ("构图取景", "特写", "构图取景", "镜头"),
+    ("元标签", "翻译", "元标签", "注释与来源"),
+    ("构图取景", "特写", "构图取景", "取景"),
     ("构图取景", "视线", "构图取景", "视角"),
-    ("画面", "氛围", "背景", "氛围"),
+    ("画面", "氛围", "背景", "自然景物"),
     # ---- 第三轮：对齐「Danbooru 标签超市」(tags.novelai.dev) 的叫法与归属 ----
     ("人物", "物种", "人物", "类型"),              # 它家「类型」把种族/身份/数量都归一起
     ("人物", "身份", "人物", "类型"),
@@ -149,11 +149,20 @@ MERGE = [
     ("人物", "下身装饰", "人物", "下身衣装"),
     ("人物", "衣装", "人物", "全身衣装"),
     ("人物", "全身装饰", "人物", "身体装饰"),
+    # ---- 第五轮：让名字和内容对上 ----
+    ("人物", "头部饰品", "人物", "头部配饰"),        # 与「配饰」成套（饰品/配饰不混用）
+    ("人物", "身体装饰", "人物", "体貌特征"),        # 拆掉：纹身/创可贴留在体貌特征，束缚具单独成桶，纽扣回上衣
+    ("背景", "氛围", "背景", "自然景物"),            # 这桶里装的其实是天空/云/水/树/山
+    ("元标签", "图注", "元标签", "注释与来源"),
+    ("内置分类-禁", "", "限制级", "R18"),
+    ("内置分类-禁", "R18", "限制级", "R18"),
+    ("内置分类-禁", "性行为", "限制级", "R18"),
+    ("内置分类-禁", "胸", "限制级", "R18"),
 ]
 MERGE_MAP = {(a, b): (c, d) for a, b, c, d in MERGE}
 
 # 页面分类按钮的优先序（越靠前越优先；没列到的按条数排在后面）
-L1_ORDER = ["人物", "构图取景", "背景", "画面", "物件", "元标签", "反向", "内置分类-禁",
+L1_ORDER = ["人物", "构图取景", "背景", "画面", "物件", "元标签", "反向", "限制级",
             "kontext指令", "角色", "画师", "作品"]
 
 # ---------------------------------------------------------------- 人工覆盖表
@@ -166,23 +175,23 @@ OVERRIDES = {
     "motor_vehicle": ("物件", ""),
     "forehead": ("人物", "五官"),
     "androgynous": ("人物", "体形与肤色"),
-    "facial": ("内置分类-禁", "R18"),
+    "facial": ("限制级", "R18"),
     "restrained": ("人物", "姿势动作"),
     "spikes": ("人物", "发型"),
-    "clothing_aside": ("内置分类-禁", "R18"),
+    "clothing_aside": ("限制级", "R18"),
     "side_slit": ("人物", "服装"),
     "floating": ("人物", "姿势动作"),
-    "science_fiction": ("元标签", "图注"),
+    "science_fiction": ("元标签", "注释与来源"),
     "licking": ("人物", "姿势动作"),
     "veins": ("人物", "体貌特征"),
     "spot_color": ("画面", "装饰"),
     "knee_up": ("人物", "姿势动作"),
     "desk": ("物件", ""),
     "front-tie_top": ("人物", "服装"),
-    "dual_persona": ("元标签", "图注"),
+    "dual_persona": ("元标签", "注释与来源"),
     "gift": ("物件", ""),
     "beads": ("人物", "配饰"),
-    "convenient_censoring": ("内置分类-禁", "R18"),
+    "convenient_censoring": ("限制级", "R18"),
     ":<": ("人物", "表情"),
     "toned": ("人物", "体形与肤色"),
     "furrowed_brow": ("人物", "表情"),
@@ -197,20 +206,20 @@ OVERRIDES = {
     "headset": ("人物", "配饰"),
     "@_@": ("人物", "表情"),
     "pouch": ("物件", ""),
-    "personification": ("元标签", "图注"),
+    "personification": ("元标签", "注释与来源"),
     "spoken_ellipsis": ("人物", "表情"),
     "age_difference": ("人物", "体形与肤色"),
     "jitome": ("人物", "表情"),
     "partially_submerged": ("人物", "姿势动作"),
-    "bulge": ("内置分类-禁", "R18"),
-    "one-hour_drawing_challenge": ("元标签", "图注"),
+    "bulge": ("限制级", "R18"),
+    "one-hour_drawing_challenge": ("元标签", "注释与来源"),
     "wide-eyed": ("人物", "表情"),
     "emphasis_lines": ("画面", "装饰"),
     "thong": ("人物", "服装"),
     "epaulettes": ("人物", "服装"),
-    "fingering": ("内置分类-禁", "R18"),
+    "fingering": ("限制级", "R18"),
     "flying": ("人物", "姿势动作"),
-    "cleft_of_venus": ("内置分类-禁", "R18"),
+    "cleft_of_venus": ("限制级", "R18"),
     "head_rest": ("人物", "姿势动作"),
     "notice_lines": ("画面", "装饰"),
     ":q": ("人物", "表情"),
@@ -246,7 +255,7 @@ OVERRIDES = {
     ":t": ("人物", "表情"),
     "forehead_mark": ("人物", "五官"),
     "stairs": ("背景", "场景"),
-    "leash": ("内置分类-禁", "R18"),
+    "leash": ("限制级", "R18"),
     "sound_effects": ("画面", "装饰"),
     "=_=": ("人物", "表情"),
     "popsicle": ("物件", ""),
@@ -259,7 +268,7 @@ OVERRIDES = {
     "chromatic_aberration": ("画面", "装饰"),
     "minigirl": ("人物", "体形与肤色"),
     "strawberry": ("物件", ""),
-    "borrowed_character": ("元标签", "图注"),
+    "borrowed_character": ("元标签", "注释与来源"),
     # 第二批（继续按热度往下扫）
     "drawstring": ("人物", "服装"),
     "abyssal_ship": ("人物", "物种"),
@@ -267,9 +276,9 @@ OVERRIDES = {
     "music": ("画面", "氛围"),
     "railing": ("背景", "场景"),
     ";)": ("人物", "表情"),
-    "contemporary": ("元标签", "图注"),
+    "contemporary": ("元标签", "注释与来源"),
     "interracial": ("人物", "身份"),
-    "alternate_color": ("元标签", "图注"),
+    "alternate_color": ("元标签", "注释与来源"),
     "bespectacled": ("人物", "配饰"),
     "branch": ("背景", "场景"),
     "smoking": ("人物", "姿势动作"),
@@ -278,7 +287,7 @@ OVERRIDES = {
     "ofuda": ("物件", ""),
     "fence": ("背景", "场景"),
     "zoom_layer": ("构图取景", "构图"),
-    "page_number": ("元标签", "图注"),
+    "page_number": ("元标签", "注释与来源"),
     "smug": ("人物", "表情"),
     "vision_(genshin_impact)": ("人物", "配饰"),
     "kneepits": ("人物", "体貌特征"),
@@ -287,7 +296,7 @@ OVERRIDES = {
     "tachi-e": ("元标签", "媒介"),
     "blindfold": ("人物", "配饰"),
     "size_difference": ("人物", "体形与肤色"),
-    "gag": ("内置分类-禁", "R18"),
+    "gag": ("限制级", "R18"),
     "armpit_crease": ("人物", "体貌特征"),
     "anklet": ("人物", "配饰"),
     "sunflower": ("物件", ""),
@@ -304,13 +313,13 @@ OVERRIDES = {
     "gakuran": ("人物", "服装"),
     "lapels": ("人物", "服装"),
     "bookshelf": ("物件", ""),
-    "ahegao": ("内置分类-禁", "R18"),
+    "ahegao": ("限制级", "R18"),
     "wristwatch": ("人物", "配饰"),
     "aircraft": ("物件", ""),
     "microskirt": ("人物", "服装"),
     "two-sided_fabric": ("人物", "服装"),
     "cable": ("物件", ""),
-    "name_tag": ("元标签", "图注"),
+    "name_tag": ("元标签", "注释与来源"),
     # 第三批
     "on_head": ("人物", "配饰"),
     "bush": ("背景", "场景"),
@@ -326,7 +335,7 @@ OVERRIDES = {
     "vambraces": ("人物", "服装"),
     "reading": ("人物", "姿势动作"),
     "magic": ("画面", "装饰"),
-    "chinese_zodiac": ("元标签", "图注"),
+    "chinese_zodiac": ("元标签", "注释与来源"),
     "unbuttoned": ("人物", "服装"),
     "haori": ("人物", "服装"),
     "talking": ("人物", "姿势动作"),
@@ -334,10 +343,10 @@ OVERRIDES = {
     "riding": ("人物", "姿势动作"),
     "cannon": ("物件", ""),
     "pocky": ("物件", ""),
-    "battle": ("元标签", "图注"),
+    "battle": ("元标签", "注释与来源"),
     "partially_unbuttoned": ("人物", "服装"),
     "laughing": ("人物", "表情"),
-    "fantasy": ("元标签", "图注"),
+    "fantasy": ("元标签", "注释与来源"),
     "hitodama": ("画面", "装饰"),
     "dancing": ("人物", "姿势动作"),
     "gohei": ("物件", ""),
@@ -348,26 +357,26 @@ OVERRIDES = {
     "dark": ("画面", "光照"),
     "interspecies": ("人物", "物种"),
     "bracer": ("人物", "配饰"),
-    "company_name": ("元标签", "图注"),
+    "company_name": ("元标签", "注释与来源"),
     "wince": ("人物", "表情"),
     "randoseru": ("人物", "配饰"),
-    "imminent_penetration": ("内置分类-禁", "R18"),
-    "pointless_censoring": ("内置分类-禁", "R18"),
+    "imminent_penetration": ("限制级", "R18"),
+    "pointless_censoring": ("限制级", "R18"),
     "bathing": ("人物", "姿势动作"),
     "partially_colored": ("元标签", "媒介"),
     "carrot": ("物件", ""),
     "leather": ("人物", "服装"),
-    "used_condom": ("内置分类-禁", "R18"),
+    "used_condom": ("限制级", "R18"),
     "scabbard": ("物件", ""),
     "watercraft": ("物件", ""),
     "halftone": ("元标签", "媒介"),
-    "condom_wrapper": ("内置分类-禁", "R18"),
+    "condom_wrapper": ("限制级", "R18"),
     "frog": ("人物", "物种"),
-    "sexually_suggestive": ("内置分类-禁", "R18"),
-    "gameplay_mechanics": ("元标签", "图注"),
-    "public_indecency": ("内置分类-禁", "R18"),
-    "rigging": ("元标签", "图注"),
-    "anniversary": ("元标签", "图注"),
+    "sexually_suggestive": ("限制级", "R18"),
+    "gameplay_mechanics": ("元标签", "注释与来源"),
+    "public_indecency": ("限制级", "R18"),
+    "rigging": ("元标签", "注释与来源"),
+    "anniversary": ("元标签", "注释与来源"),
     "aura": ("画面", "装饰"),
     "stitches": ("人物", "体貌特征"),
     "anchor": ("物件", ""),
@@ -390,7 +399,7 @@ OVERRIDES = {
     "coin": ("物件", ""),
     "onee-shota": ("人物", "身份"),
     "charm_(object)": ("物件", ""),
-    "multiple_persona": ("元标签", "图注"),
+    "multiple_persona": ("元标签", "注释与来源"),
     "biting": ("人物", "姿势动作"),
     "anime_coloring": ("元标签", "媒介"),
     "kicking": ("人物", "姿势动作"),
@@ -400,18 +409,18 @@ OVERRIDES = {
     "tate_eboshi": ("人物", "配饰"),
     "mushroom": ("物件", ""),
     "peach": ("物件", ""),
-    "x-ray": ("元标签", "图注"),
+    "x-ray": ("元标签", "注释与来源"),
     "game_controller": ("物件", ""),
     "handheld_game_console": ("物件", ""),
     "folded": ("人物", "服装"),
     "summer": ("背景", "氛围"),
     "bonnet": ("人物", "配饰"),
     "stool": ("物件", ""),
-    "birthday": ("元标签", "图注"),
+    "birthday": ("元标签", "注释与来源"),
     "cookie": ("物件", ""),
     "ribs": ("人物", "体貌特征"),
     "moaning": ("人物", "表情"),
-    "peeing": ("内置分类-禁", "R18"),
+    "peeing": ("限制级", "R18"),
     "ripples": ("画面", "装饰"),
     "side-by-side": ("构图取景", "构图"),
     "aiming": ("人物", "姿势动作"),
@@ -420,12 +429,12 @@ OVERRIDES = {
     "bamboo": ("背景", "场景"),
     "gold": ("画面", "装饰"),
     "camouflage": ("人物", "服装"),
-    "name_connection": ("元标签", "图注"),
+    "name_connection": ("元标签", "注释与来源"),
     "heads_together": ("人物", "姿势动作"),
     "magic_circle": ("画面", "装饰"),
-    "double_penetration": ("内置分类-禁", "R18"),
-    "voice_actor_connection": ("元标签", "图注"),
-    "pee": ("内置分类-禁", "R18"),
+    "double_penetration": ("限制级", "R18"),
+    "voice_actor_connection": ("元标签", "注释与来源"),
+    "pee": ("限制级", "R18"),
     "syringe": ("物件", ""),
     "shell": ("物件", ""),
     "oversized_object": ("构图取景", "构图"),
@@ -443,7 +452,7 @@ OVERRIDES = {
     "sheet_grab": ("人物", "姿势动作"),
     "lanyard": ("人物", "配饰"),
     "watermelon": ("物件", ""),
-    "trait_connection": ("元标签", "图注"),
+    "trait_connection": ("元标签", "注释与来源"),
     "motorcycle": ("物件", ""),
     "manly": ("人物", "体形与肤色"),
     "sandwiched": ("人物", "对象与数量"),
@@ -452,7 +461,7 @@ OVERRIDES = {
     "whistle": ("物件", ""),
     "egg": ("物件", ""),
     "scroll": ("物件", ""),
-    "mind_control": ("元标签", "图注"),
+    "mind_control": ("元标签", "注释与来源"),
     # 第五批
     "gap_(touhou)": ("人物", "身份"),
     "object_on_head": ("人物", "配饰"),
@@ -463,17 +472,17 @@ OVERRIDES = {
     "race_queen": ("人物", "身份"),
     "jaggy_lines": ("画面", "装饰"),
     "tape": ("物件", ""),
-    "merry_christmas": ("元标签", "图注"),
+    "merry_christmas": ("元标签", "注释与来源"),
     "sakazuki": ("物件", ""),
     "bruise": ("人物", "体貌特征"),
-    "content_rating": ("元标签", "图注"),
+    "content_rating": ("元标签", "注释与来源"),
     "tank": ("物件", ""),
     "pillar": ("背景", "场景"),
     "prosthesis": ("人物", "体貌特征"),
     "humanization": ("人物", "物种"),
     "recording": ("人物", "姿势动作"),
     "giantess": ("人物", "体形与肤色"),
-    "ranguage": ("元标签", "图注"),
+    "ranguage": ("元标签", "注释与来源"),
     "torpedo": ("物件", ""),
     "planted": ("背景", "场景"),
     "earclip": ("人物", "配饰"),
@@ -488,49 +497,49 @@ OVERRIDES = {
     "octoling": ("人物", "物种"),
     "meat": ("物件", ""),
     "partially_unzipped": ("人物", "服装"),
-    "internal_cumshot": ("内置分类-禁", "R18"),
+    "internal_cumshot": ("限制级", "R18"),
     "bride": ("人物", "身份"),
     "husband_and_wife": ("人物", "身份"),
     "sepia": ("画面", "装饰"),
     "playing_games": ("人物", "姿势动作"),
     "broken": ("物件", ""),
     "explosive": ("物件", ""),
-    "company_connection": ("元标签", "图注"),
+    "company_connection": ("元标签", "注释与来源"),
     "oripathy_lesion_(arknights)": ("人物", "体貌特征"),
     "dango": ("物件", ""),
     "taking_picture": ("人物", "姿势动作"),
     "pinky_out": ("人物", "姿势动作"),
     "uterus": ("人物", "体貌特征"),
     "twisted_torso": ("人物", "姿势动作"),
-    "exhibitionism": ("内置分类-禁", "R18"),
+    "exhibitionism": ("限制级", "R18"),
     "firing": ("人物", "姿势动作"),
     "waves": ("背景", "氛围"),
-    "take_your_pick": ("元标签", "图注"),
-    "pervert": ("元标签", "图注"),
-    "yukkuri_shiteitte_ne": ("元标签", "图注"),
-    "pun": ("元标签", "图注"),
+    "take_your_pick": ("元标签", "注释与来源"),
+    "pervert": ("元标签", "注释与来源"),
+    "yukkuri_shiteitte_ne": ("元标签", "注释与来源"),
+    "pun": ("元标签", "注释与来源"),
     "elbow_rest": ("人物", "姿势动作"),
-    "whip": ("内置分类-禁", "R18"),
+    "whip": ("限制级", "R18"),
     "chess_piece": ("物件", ""),
     "median_furrow": ("人物", "体貌特征"),
     "onigiri": ("物件", ""),
     "bone": ("人物", "体貌特征"),
     "penguin": ("人物", "物种"),
     "amputee": ("人物", "体貌特征"),
-    "barcode": ("元标签", "图注"),
+    "barcode": ("元标签", "注释与来源"),
     "kotatsu": ("背景", "场景"),
     "autumn": ("背景", "氛围"),
     "midair": ("构图取景", "构图"),
-    "time_paradox": ("元标签", "图注"),
-    "netorare": ("内置分类-禁", "R18"),
+    "time_paradox": ("元标签", "注释与来源"),
+    "netorare": ("限制级", "R18"),
     "albino": ("人物", "体形与肤色"),
-    "crotchless": ("内置分类-禁", "R18"),
-    "suggestive_fluid": ("内置分类-禁", "R18"),
+    "crotchless": ("限制级", "R18"),
+    "suggestive_fluid": ("限制级", "R18"),
     "grapes": ("物件", ""),
     "hot": ("人物", "体貌特征"),
     "energy": ("画面", "装饰"),
     "yandere": ("人物", "身份"),
-    "scene_reference": ("元标签", "图注"),
+    "scene_reference": ("元标签", "注释与来源"),
     "waking_up": ("人物", "姿势动作"),
     "cowlick": ("人物", "发型"),
     "lightning": ("画面", "装饰"),
@@ -541,9 +550,9 @@ OVERRIDES = {
     "nintendo_switch": ("物件", ""),
     "pole": ("物件", ""),
     "damaged": ("画面", "装饰"),
-    "thank_you": ("元标签", "图注"),
+    "thank_you": ("元标签", "注释与来源"),
     "fashion": ("人物", "服装"),
-    "hypnosis": ("元标签", "图注"),
+    "hypnosis": ("元标签", "注释与来源"),
     "elbow_pads": ("人物", "配饰"),
     "clone": ("人物", "对象与数量"),
     "statue": ("物件", ""),
@@ -551,12 +560,12 @@ OVERRIDES = {
     "locker": ("背景", "场景"),
     "muted_color": ("画面", "装饰"),
     "spring_onion": ("物件", ""),
-    "reference_inset": ("元标签", "图注"),
+    "reference_inset": ("元标签", "注释与来源"),
     "hairy": ("人物", "体貌特征"),
     "ladle": ("物件", ""),
     "turning_head": ("人物", "姿势动作"),
     "throne": ("物件", ""),
-    "horror_(theme)": ("元标签", "图注"),
+    "horror_(theme)": ("元标签", "注释与来源"),
     "stick": ("物件", ""),
     "furry_with_non-furry": ("人物", "物种"),
     "reverse_trap": ("人物", "身份"),
@@ -564,7 +573,7 @@ OVERRIDES = {
     "quiver": ("物件", ""),
     "painting_(object)": ("物件", ""),
     "pouring": ("人物", "姿势动作"),
-    "defeat": ("元标签", "图注"),
+    "defeat": ("元标签", "注释与来源"),
     "gears": ("物件", ""),
     "earpiece": ("人物", "配饰"),
     "partially_undressed": ("人物", "服装"),
@@ -576,18 +585,18 @@ OVERRIDES = {
     "stand_(jojo)": ("人物", "物种"),
     # 第六批
     "raccoon_girl": ("人物", "物种"),
-    "improvised_gag": ("内置分类-禁", "R18"),
+    "improvised_gag": ("限制级", "R18"),
     "tower": ("背景", "场景"),
     "poking": ("人物", "姿势动作"),
     "imagining": ("人物", "表情"),
     "hairpods": ("人物", "配饰"),
-    "deep_penetration": ("内置分类-禁", "R18"),
+    "deep_penetration": ("限制级", "R18"),
     "lock": ("物件", ""),
     "shop": ("背景", "场景"),
     "hose": ("物件", ""),
     "reverse_bunnysuit": ("人物", "服装"),
     "puddle": ("背景", "场景"),
-    "death": ("元标签", "图注"),
+    "death": ("元标签", "注释与来源"),
     "silk": ("人物", "服装"),
     "trident": ("物件", ""),
     "pillarboxed": ("画面", "装饰"),
@@ -601,7 +610,7 @@ OVERRIDES = {
     "clover": ("物件", ""),
     "bullet": ("物件", ""),
     "lemon": ("物件", ""),
-    "transformation": ("元标签", "图注"),
+    "transformation": ("元标签", "注释与来源"),
     "taur": ("人物", "物种"),
     "mandarin_orange": ("物件", ""),
     "assault_visor": ("人物", "配饰"),
@@ -611,11 +620,11 @@ OVERRIDES = {
     "pawpads": ("人物", "体貌特征"),
     "too_many": ("人物", "对象与数量"),
     "miniboy": ("人物", "体形与肤色"),
-    "after_fellatio": ("内置分类-禁", "R18"),
+    "after_fellatio": ("限制级", "R18"),
     "bodypaint": ("人物", "体貌特征"),
     "milk": ("物件", ""),
     "bite_mark": ("人物", "体貌特征"),
-    "2022": ("元标签", "图注"),
+    "2022": ("元标签", "注释与来源"),
     "spacesuit": ("人物", "服装"),
     "pizza": ("物件", ""),
     "kyuubi": ("人物", "物种"),
@@ -623,9 +632,9 @@ OVERRIDES = {
     "thinking": ("人物", "表情"),
     "bolt_action": ("物件", ""),
     "fishing_rod": ("物件", ""),
-    "brand_name_imitation": ("元标签", "图注"),
+    "brand_name_imitation": ("元标签", "注释与来源"),
     "people": ("人物", "对象与数量"),
-    "deepthroat": ("内置分类-禁", "R18"),
+    "deepthroat": ("限制级", "R18"),
     "duck": ("人物", "物种"),
     "rubber_duck": ("物件", ""),
     "scope": ("物件", ""),
@@ -640,13 +649,13 @@ OVERRIDES = {
     "sandwich": ("物件", ""),
     "parfait": ("物件", ""),
     "tsundere": ("人物", "身份"),
-    "subtitled": ("元标签", "图注"),
-    "assisted_exposure": ("内置分类-禁", "R18"),
+    "subtitled": ("元标签", "注释与来源"),
+    "assisted_exposure": ("限制级", "R18"),
     "glowstick": ("物件", ""),
-    "novelty_censor": ("内置分类-禁", "R18"),
+    "novelty_censor": ("限制级", "R18"),
     "super_saiyan": ("人物", "物种"),
     "remote_control": ("物件", ""),
-    "milestone_celebration": ("元标签", "图注"),
+    "milestone_celebration": ("元标签", "注释与来源"),
     "sushi": ("物件", ""),
     "throwing": ("人物", "姿势动作"),
     "showering": ("人物", "姿势动作"),
@@ -655,22 +664,22 @@ OVERRIDES = {
     "talons": ("人物", "体貌特征"),
     "cheese": ("物件", ""),
     "au_ra": ("人物", "物种"),
-    "song_name": ("元标签", "图注"),
+    "song_name": ("元标签", "注释与来源"),
     "banana": ("物件", ""),
     "pancake": ("物件", ""),
-    "wiffle_gag": ("内置分类-禁", "R18"),
+    "wiffle_gag": ("限制级", "R18"),
     "chicken": ("人物", "物种"),
     "cuts": ("人物", "体貌特征"),
     "rooftop": ("背景", "场景"),
-    "gaping": ("内置分类-禁", "R18"),
-    "color_guide": ("元标签", "图注"),
+    "gaping": ("限制级", "R18"),
+    "color_guide": ("元标签", "注释与来源"),
     "briefcase": ("物件", ""),
-    "guro": ("内置分类-禁", "R18"),
+    "guro": ("限制级", "R18"),
     "map": ("物件", ""),
-    "2021": ("元标签", "图注"),
+    "2021": ("元标签", "注释与来源"),
     "game_console": ("物件", ""),
-    "spitroast": ("内置分类-禁", "R18"),
-    "evolutionary_line": ("元标签", "图注"),
+    "spitroast": ("限制级", "R18"),
+    "evolutionary_line": ("元标签", "注释与来源"),
     "glitch": ("画面", "装饰"),
     "diffraction_spikes": ("画面", "装饰"),
     "cream": ("物件", ""),
@@ -683,22 +692,22 @@ OVERRIDES = {
     "mochi": ("物件", ""),
     "embers": ("画面", "装饰"),
     "hagoromo": ("人物", "服装"),
-    "string_of_fate": ("元标签", "图注"),
+    "string_of_fate": ("元标签", "注释与来源"),
     "kanzashi": ("人物", "配饰"),
     "lineup": ("人物", "对象与数量"),
     "spade_(shape)": ("画面", "装饰"),
-    "corruption": ("元标签", "图注"),
-    "alternate_form": ("元标签", "图注"),
+    "corruption": ("元标签", "注释与来源"),
+    "alternate_form": ("元标签", "注释与来源"),
     "needle": ("物件", ""),
-    "numbered": ("元标签", "图注"),
+    "numbered": ("元标签", "注释与来源"),
     "lifebuoy": ("物件", ""),
     "twitching": ("人物", "姿势动作"),
     "french_fries": ("物件", ""),
-    "instant_loss": ("内置分类-禁", "R18"),
+    "instant_loss": ("限制级", "R18"),
     "writing": ("人物", "姿势动作"),
     "figure": ("物件", ""),
     "hiding": ("人物", "姿势动作"),
-    "left-handed": ("元标签", "图注"),
+    "left-handed": ("元标签", "注释与来源"),
     "driving": ("人物", "姿势动作"),
     "uchiwa": ("物件", ""),
     "cosmetics": ("人物", "配饰"),
@@ -708,13 +717,13 @@ OVERRIDES = {
     # 第七批：前 5000 的最后一批
     "grinding": ("人物", "姿势动作"),
     "chinese_knot": ("物件", ""),
-    "spanked": ("内置分类-禁", "R18"),
+    "spanked": ("限制级", "R18"),
     "treble_clef": ("画面", "装饰"),
     "medal": ("人物", "配饰"),
     "shikishi": ("物件", ""),
     "slave": ("人物", "身份"),
     "spill": ("画面", "装饰"),
-    "object_namesake": ("元标签", "图注"),
+    "object_namesake": ("元标签", "注释与来源"),
     "earbuds": ("人物", "配饰"),
     "nightcap": ("人物", "配饰"),
     "head-mounted_display": ("人物", "配饰"),
@@ -729,13 +738,13 @@ OVERRIDES = {
     "stethoscope": ("物件", ""),
     "pinching": ("人物", "姿势动作"),
     "chainsaw": ("物件", ""),
-    "strangling": ("内置分类-禁", "R18"),
-    "reverse_upright_straddle": ("内置分类-禁", "R18"),
+    "strangling": ("限制级", "R18"),
+    "reverse_upright_straddle": ("限制级", "R18"),
     "goldfish": ("人物", "物种"),
     "paint": ("元标签", "媒介"),
-    "tokusatsu": ("元标签", "图注"),
+    "tokusatsu": ("元标签", "注释与来源"),
     "laevatein_(touhou)": ("人物", "身份"),
-    "peeing_self": ("内置分类-禁", "R18"),
+    "peeing_self": ("限制级", "R18"),
     "screaming": ("人物", "表情"),
     "path": ("背景", "场景"),
     "come_hither": ("人物", "姿势动作"),
@@ -743,7 +752,7 @@ OVERRIDES = {
     "light_trail": ("画面", "光照"),
     "seashell": ("物件", ""),
     "attack": ("人物", "姿势动作"),
-    "cooperative_fellatio": ("内置分类-禁", "R18"),
+    "cooperative_fellatio": ("限制级", "R18"),
     "onee-loli": ("人物", "身份"),
     "jealous": ("人物", "表情"),
     "sink": ("物件", ""),
@@ -751,7 +760,7 @@ OVERRIDES = {
     "submerged": ("背景", "场景"),
     "ladder": ("物件", ""),
     "carpet": ("背景", "场景"),
-    "mating_press": ("内置分类-禁", "R18"),
+    "mating_press": ("限制级", "R18"),
     "duel": ("人物", "姿势动作"),
 }
 
@@ -910,13 +919,13 @@ POSE += ("pulling", "pulling_clothes", "reaching", "reaching_out", "gripping")
 # 英文词根认不出来时，看「中文译名」再判一次（前 20k 的中文是全的，这条命中率最高）。
 # 一条中文词能覆盖一片，比英文词根划算；顺序＝优先级。
 ZH_RULES = [
-    ("内置分类-禁", "R18", ("性交", "性爱", "裸", "乳", "阴", "阴茎", "精液", "肛", "口交", "颜射", "自慰",
+    ("限制级", "R18", ("性交", "性爱", "裸", "乳", "阴", "阴茎", "精液", "肛", "口交", "颜射", "自慰",
                             "乳头", "性器官", "勃起", "插入", "内射", "调教", "捆绑", "露出", "绝对领域",
                             "下体", "射精", "强奸", "性行为", "色情", "淫")),
     ("元标签", "翻译", ("翻译",)),
     ("元标签", "媒介", ("媒介", "上色手法", "画法", "像素", "黑白", "单色", "水墨", "油画", "素描", "线稿",
                         "描绘板", "立绘", "草图", "涂鸦", "2格漫画", "漫画风")),
-    ("元标签", "图注", ("签名", "署名", "水印", "对话框", "页码", "挑战", "注释", "拟人", "梗", "恶搞",
+    ("元标签", "注释与来源", ("签名", "署名", "水印", "对话框", "页码", "挑战", "注释", "拟人", "梗", "恶搞",
                         "联动", "二创", "借用", "用户名", "现代", "时代", "科幻", "奇幻", "题材")),
     ("画面", "画质", ("分辨率", "画质", "高清", "超清", "模糊", "马赛克")),
     ("画面", "光照", ("光照", "光线", "逆光", "背光", "发光", "闪光", "阴影", "光斑", "镜头光晕", "阳光",
@@ -1018,7 +1027,7 @@ def contains(name, words):
 # 对齐「Danbooru 标签超市」(tags.novelai.dev) 的叫法与归属：
 #   · 全身性衣物 -> 「全身衣装」（它同名桶就是连衣裙/制服/和服/泳装）
 #   · 领带/领结/衣领/围巾/项链 -> 「脖子」（穿挂在脖子上）
-#   · 兽耳 + 耳饰 -> 「耳朵」；胸部相关 -> 「胸部」；眼镜/眼罩 -> 「头部饰品」
+#   · 兽耳 + 耳饰 -> 「耳朵」；胸部相关 -> 「胸部」；眼镜/眼罩 -> 「头部配饰」
 #   · 创可贴/绷带/纹身/锁链/手铐 -> 「身体装饰」（它同名桶即这类零碎物）
 # 命中顺序 = 优先级：先抓鞋袜/头/耳/颈/身上的零碎，再抓明确的全身装，最后才是上/下身。
 # 优先词（最高优先）：这些词里含别的词表的子串，必须先判，否则会归错
@@ -1032,7 +1041,7 @@ L2_HEAD = ("hat", "cap", "helmet", "beret", "crown", "tiara", "hairband", "headb
            "headgear", "scrunchie", "veil", "hachimaki", "tate_eboshi", "bonnet", "nightcap",
            "circlet", "eyewear_on_head", "帽", "头盔", "发饰", "头饰", "头环", "头巾", "面纱",
            "发带", "发夹", "发绳", "发簪", "头戴", "王冠", "皇冠", "睡帽", "斗笠", "头绳", "bobble",
-           # 眼镜/眼罩一类（参考站归「头部饰品」）
+           # 眼镜/眼罩一类（参考站归「头部配饰」）
            "glasses", "sunglasses", "monocle", "eyepatch", "blindfold", "goggles", "eyewear", "visor",
            "眼镜", "太阳镜", "眼罩", "护目镜", "墨镜")
 L2_EAR = ("earring", "ear_ornament", "earclip", "ear_piercing", "耳环", "耳饰", "耳夹", "耳钉", "耳挂",
@@ -1055,13 +1064,22 @@ L2_NECK_BODY = ("shirt", "sweater", "vest", "jacket", "coat", "blouse", "dress",
 L2_BREAST = ("breast", "nipple", "areola", "cleavage", "underboob", "sideboob", "pectoral", "pecs",
              "flat_chest", "chest_hair", "乳沟", "乳房", "乳头", "乳首", "胸肌", "胸部", "胸毛",
              "南半球", "欧派")
-L2_BODY_DECO = ("tattoo", "bandaid", "bandage", "plaster", "shackle", "handcuff", "ball_and_chain",
-                "leash", "shibari", "rope", "bound", "binding", "restraint", "straitjacket", "gag",
-                "buttons", "chain", "纹身", "创可贴", "绷带", "纱布", "手铐", "镣铐", "锁链", "链条",
-                "束缚", "捆绑", "绑缚", "绳缚", "纽扣")
+L2_MARK = ("tattoo", "bandaid", "bandage", "plaster", "纹身", "创可贴", "绷带", "纱布")
+L2_RESTRAINT = ("handcuff", "shackle", "ball_and_chain", "leash", "shibari", "rope", "bound", "binding",
+                "restraint", "straitjacket", "gag", "chained", "chains", "chain_hook", "手铐", "镣铐",
+                "锁链", "铁链", "链条", "束缚", "捆绑", "绑缚", "绳缚", "绳索", "口塞")
+# 这些词里的 cuff / chain / rope 不是束缚具：袖口、腰链、europe（含 rope）
+L2_RESTRAINT_SKIP = ("wrist_cuff", "sleeve_cuff", "cufflink", "wristband", "saucer", "europe")
+# 这几个是「袖口/臂环/腰链」一类饰品，明确归配饰
+L2_ACC_EXACT = ("cuffs", "ankle_cuffs", "arm_cuffs", "leg_cuffs", "thigh_cuffs", "buttoned_cuffs",
+                "frilled_cuffs", "fur_cuffs", "belt_cuffs", "belly_chain", "belt_chain", "rope_belt",
+                "bar_cuffs", "hand_cuffs")
+# 姿势类（原来混在体貌特征里）
+L2_POSE_WORDS = ("hand_up", "hands_up", "arm_up", "arms_up", "leg_up", "hands_on_hips", "hand_on_hip",
+                 "crossed_arms", "arms_crossed", "hand_on_own_hip", "hands_behind_back")
 L2_WAIST = ("belt", "sash", "waistband", "腰带", "腰封", "束腰", "皮带")
 # 会被「按穿着部位重判」的二级（含旧桶）；体貌/面部/头发里也混着耳饰、兽耳、纹身这类
-CLOTH_L2 = ("服装", "配饰", "汉服", "上身衣装", "下身衣装", "全身衣装", "身体装饰", "鞋袜", "头部饰品",
+CLOTH_L2 = ("服装", "配饰", "汉服", "上身衣装", "下身衣装", "全身衣装", "束缚具", "鞋袜", "头部配饰",
             "脖子", "耳朵", "胸部")
 REJUDGE_L2 = CLOTH_L2 + ("体貌特征", "面部", "头发")
 # danbooru 的「概念 / meta」标签：说的不是具体穿在哪，归「其他」
@@ -1080,6 +1098,7 @@ L2_UPPER = ("shirt", "sweater", "hoodie", "jacket", "coat", "blazer", "cardigan"
             "suspenders", "shawl", "suit",
             "上衣", "衬衫", "衬衣", "毛衣", "卫衣", "背心", "外套", "夹克", "大衣", "风衣", "短袖",
             "长袖", "无袖", "胸罩", "内衣", "袖子", "翻领", "开衫", "马甲", "抹胸", "胸衣", "背带",
+            "button", "drawstring", "纽扣", "抽绳", "扣子",
             # 汉服单品（按穿在哪归位，不再单独一个「汉服」桶）
             "上衫", "短衫", "长衫", "宋抹", "披帛", "霞帔")
 
@@ -1091,11 +1110,18 @@ def _neck_hit(hay):
     return any(k in hay for k in L2_NECK)
 
 
-def _body_deco_hit(hay):
-    """身上的零碎/束缚物；项链里的 chain 不算（那是「脖子」）"""
+def _mark_hit(hay):
+    """纹身 / 创可贴 / 绷带：身上的痕迹，归「体貌特征」"""
+    return any(k in hay for k in L2_MARK)
+
+
+def _restraint_hit(hay):
+    """手铐 / 锁链 / 绳缚 / 口塞：归「束缚具」；项链里的 chain、袖口里的 cuff 不算"""
+    if any(x in hay for x in L2_RESTRAINT_SKIP):
+        return False
     if any(x in hay for x in ("chain_necklace", "necklace", "choker", "pendant", "collar")):
-        return any(k in hay for k in L2_BODY_DECO if k != "chain")
-    return any(k in hay for k in L2_BODY_DECO)
+        return any(k in hay for k in L2_RESTRAINT if k != "chain")
+    return any(k in hay for k in L2_RESTRAINT)
 
 
 def rejudge_person(name, zh):
@@ -1109,11 +1135,19 @@ def rejudge_person(name, zh):
     if any(k in hay for k in L2_SHOES):
         return "鞋袜"
     if any(k in hay for k in L2_HEAD):
-        return "头部饰品"
+        return "头部配饰"
     if any(k in hay for k in L2_EAR):
         return "耳朵"
-    if _body_deco_hit(hay):                   # 纹身/创可贴/束缚 先于「部位」
-        return "身体装饰"
+    if name in L2_ACC_EXACT:                  # 袖口/臂环/腰链：配饰，不是束缚具
+        return "配饰"
+    if any(k in name.lower() for k in L2_POSE_WORDS):
+        return "姿势动作"
+    if any(k in hay for k in ("bare_leg", "bare_legs", "裸腿", "bared_legs")):
+        return "体貌特征"
+    if _mark_hit(hay):                        # 纹身/创可贴/绷带 = 身上的痕迹
+        return "体貌特征"
+    if _restraint_hit(hay):                   # 身上的束缚具
+        return "束缚具"
     if _neck_hit(hay):
         return "脖子"
     if any(k in hay for k in L2_BREAST):
@@ -1239,6 +1273,56 @@ def split_style(name, zh):
     return ("画面", "艺术风格")
 
 
+# ---------------------------------------------------------------- 背景（纯色背景 / 场景 / 自然景物 / 节日）
+# 原来的「氛围」名不副实（里面其实是天空、云、水、树、山），改成「自然景物」；
+# 节日与纪念日单独一桶；顺手把误收进来的衣物、饰品、道具、生物送回各自的一级。
+BG_COLOR = ("_background", "_bg", "背景")
+BG_FESTIVAL = ("christmas", "halloween", "valentine", "new_year", "new_years", "tanabata", "festival",
+               "anniversary", "easter", "thanksgiving", "birthday", "圣诞节", "万圣", "情人节", "新年",
+               "春节", "中秋", "七夕", "端午", "元旦", "愚人节", "复活节", "生日", "节日")
+BG_NATURE = ("sky", "cloud", "water", "tree", "leaf", "leaves", "petal", "night", "star", "moon",
+             "sun", "rain", "snow", "wind", "fog", "mist", "forest", "ocean", "sea", "beach", "grass",
+             "mountain", "river", "lake", "nature", "plant", "flower", "scenery", "landscape", "field",
+             "desert", "cave", "island", "waterfall", "stream", "season", "spring", "summer", "autumn",
+             "winter", "evening", "dusk", "dawn", "sunset", "twilight", "rainbow", "nebula", "galaxy",
+             "planet", "lava", "volcano", "earth", "shore", "waves", "sand", "underwater", "day",
+             "天空", "云", "海水", "大海", "山", "河", "湖", "雪", "雨", "风", "雾", "森林", "花",
+             "草", "树", "叶", "夜", "黄昏", "黎明", "自然", "风景", "星", "月", "太阳", "沙滩",
+             "瀑布", "沙漠", "岛", "火山", "季节", "春天", "夏天", "秋天", "冬天")
+BG_NATURE_SKIP = ("window", "of_field", "seat", "seal", "sunrise_animation")   # 别让 wind/field/sea 误伤
+BG_ITEM = ("bottle", "gun", "fan", "kiseru", "ashtray", "globe", "kite", "wand", "saber", "airplane",
+           "toy", "sleigh", "satellite", "device", "dish", "balloon", "bag", "box", "cup", "basket",
+           "chair", "bench", "umbrella", "towel", "book")
+BG_CREATURE = ("turtle", "dolphin", "ferret", "seagull", "starfish", "sponge", "goat", "kappa",
+               "rabbit", "frog", "penguin", "shark", "whale", "squirrel", "fox", "wolf", "deer")
+
+
+def split_ambience(name, zh):
+    """背景的二级：纯色背景 / 自然景物 / 节日 / 场景；顺手把误收的衣物、道具、生物送回各自一级。"""
+    n = (name or "").lower()
+    hay = n + " " + (zh or "")
+    if n.endswith(("_girl", "_boy")) or n in BG_CREATURE:
+        return ("人物", "类型")
+    sub = rejudge_person(n, zh)                 # 衣物 / 饰品 / 身体：本来就不该待在「背景」
+    if sub:
+        return ("人物", sub)
+    if any(k in hay for k in BG_ITEM):
+        return ("物件", split_item(n, zh) or "其他物件")
+    if (n.endswith("_day") or any(k in hay for k in BG_FESTIVAL)) and "eastern" not in hay:
+        return ("背景", "节日")
+    if any(k in hay for k in BG_COLOR):
+        return ("背景", "纯色背景")
+    if any(k in hay for k in BG_NATURE) and not any(x in hay for x in BG_NATURE_SKIP):
+        return ("背景", "自然景物")
+    return ("背景", "场景")
+
+
+# 之前被词根误抓的个别词，点名纠正
+L2_FIX_EXACT = {
+    "european_architecture": ("背景", "场景"),        # 含 rope，被当成绳缚了
+}
+
+
 def merge_l2(l1, l2):
     """查「旧桶 -> 新桶」合并表；返回 (一级, 二级)。"""
     new = MERGE_MAP.get((l1, (l2 or "").strip()))
@@ -1247,6 +1331,8 @@ def merge_l2(l1, l2):
 
 def rejudge(l1, l2, name, zh):
     """按当前词表重判一行；返回 (一级, 二级)（允许与原值相同）。"""
+    if name in L2_FIX_EXACT:
+        return L2_FIX_EXACT[name]
     l2 = (l2 or "").strip()
     if l1 == "人物" and l2 in REJUDGE_L2:
         sub = rejudge_person(name, zh)
@@ -1259,6 +1345,8 @@ def rejudge(l1, l2, name, zh):
         return (l1, l2)
     if l1 == "物件":
         return (l1, split_item(name, zh) or "其他物件")
+    if l1 == "背景":
+        return split_ambience(name, zh)
     if l1 == "构图取景":
         return split_framing(name, zh)
     if l1 == "画面" and l2 == "艺术风格":
@@ -1281,7 +1369,7 @@ def classify(name, cat, zh=""):
     if cat in ("1", "3", "4"):                      # 垫底类：不铺，二级留空
         return None
     if contains(n, R18):
-        return ("内置分类-禁", "R18")
+        return ("限制级", "R18")
     if contains(n, META):
         if "translat" in n:
             return ("元标签", "翻译")
@@ -1289,13 +1377,13 @@ def classify(name, cat, zh=""):
                 or "pixel_art" in n or "greyscale" in n or "monochrome" in n or "comic" in n
                 or "sketch" in n or "lineart" in n):
             return ("元标签", "媒介")
-        return ("元标签", "图注")
+        return ("元标签", "注释与来源")
     if contains(n, ("highres", "absurdres", "lowres", "resolution", "quality", "8k", "4k")):
         return ("画面", "画质")
     if n.endswith(("_style", "_theme")):
         return ("画面", "艺术风格")
     if n.endswith(("_username", "_id")):
-        return ("元标签", "图注")
+        return ("元标签", "注释与来源")
     if n.endswith("_print"):
         return ("人物", "服装")
     if contains(n, LIGHT):
@@ -1364,7 +1452,7 @@ def classify(name, cat, zh=""):
                 if k in z:
                     return (l1, l2)
     if cat == "5":
-        return ("元标签", "图注")
+        return ("元标签", "注释与来源")
     return None
 
 
@@ -1398,9 +1486,9 @@ def main():
             continue
         l1, l2 = (r[5] or "").strip(), (r[6] or "").strip()
         if not l1 and l2 == "十八禁":          # 历史遗留：只有二级，补上一级
-            r[5], r[6] = "内置分类-禁", "R18"
+            r[5], r[6] = "限制级", "R18"
             merged += 1
-            stat[("内置分类-禁", "R18")] += 1
+            stat[("限制级", "R18")] += 1
             continue
         if l1:
             cur = (l1, l2)
