@@ -1115,7 +1115,14 @@ ACTION_EXCLUDE = ("riding_crop", "riding_hood", "riding_boots", "riding_helmet",
                   "riding_breeches", "drinking_glass", "drinking_straw", "throwing_knife",
                   "holding_bow_(music)_instrument",
                   "biting_neck", "biting_ear")     # 这两个偏「性行为」，留在原桶
-# 嘴里叼东西 / 手脸互动：都是动作（含出血的另算，留在「面部」）
+# 体毛（不是「头发」）：arm_hair / armpit_hair / navel_hair…
+BODY_HAIR = ("arm_hair", "armpit_hair", "navel_hair", "leg_hair", "body_hair", "ass_hair", "thigh_hair",
+             "chest_hair", "foot_hair", "alternate_body_hair")
+# 摸头 / 玩头发 / 梳头 / 洗头：动作，不是「发型」
+HAIR_GESTURE = ("headpat", "hand_in_own_hair", "hand_in_another's_hair", "playing_with_own_hair",
+                "playing_with_another's_hair", "brushing_hair", "brushing_own_hair",
+                "brushing_another's_hair", "drying_hair", "cutting_hair", "braiding_hair",
+                "washing_hair", "ruffling_hair", "hair_lift")
 MOUTH_GESTURE = ("_in_mouth", "_in_own_mouth", "finger_to_mouth", "fingers_to_mouth",
                  "hand_to_own_mouth", "finger_to_another's_mouth", "covering_another's_mouth",
                  "wiping_mouth", "mouth_hold", "teeth_hold", "cheek_pull", "cheek_squash",
@@ -1217,6 +1224,10 @@ def rejudge_person(name, zh):
         return "其他"
     # 嘴里叼着 / 手碰着脸：是「动作」，不是「面部」本身（出血类除外）
     if "blood" not in (name or "") and any(k in (name or "") for k in MOUTH_GESTURE):
+        return "姿势动作"
+    if (name or "") in BODY_HAIR:              # 体毛 -> 体貌特征
+        return "体貌特征"
+    if (name or "") in HAIR_GESTURE:           # 摸头 / 梳头 -> 动作
         return "姿势动作"
     for k in PRIOR_UPPER:                     # 优先词：cape 不能被 cap 抢走
         if k in hay:
@@ -1509,6 +1520,79 @@ L2_FIX_EXACT = {
     "rounded_corners": ("元标签", "注释与来源"),
     "borderless_panels": ("元标签", "媒介"),
     "numbered_panels": ("元标签", "媒介"),
+    # 「类型」里混的衣物 / 物件 / 食物 / 装饰 / 身体特征
+    "bar_censor": ("限制级", "R18"),
+    "hair_censor": ("限制级", "R18"),
+    "missionary": ("人物", "性行为"),
+    "harness": ("人物", "束缚具"),
+    "bit_gag": ("人物", "束缚具"),
+    "tunic": ("人物", "上身衣装"),
+    "waistcoat": ("人物", "上身衣装"),
+    "white_bloomers": ("人物", "下身衣装"),
+    "obiage": ("人物", "配饰"),
+    "dynamax_band": ("人物", "配饰"),
+    "tengu-geta": ("人物", "鞋袜"),
+    "dirndl": ("人物", "全身衣装"),
+    "toga": ("人物", "全身衣装"),
+    "kigurumi": ("人物", "全身衣装"),
+    "gi": ("人物", "全身衣装"),
+    "cat_hood": ("人物", "头部配饰"),
+    "rabbit_hood": ("人物", "头部配饰"),
+    "shark_hood": ("人物", "头部配饰"),
+    "cat_cutout": ("人物", "上身衣装"),
+    "macaron": ("物件", "食物"),
+    "hot_dog": ("物件", "食物"),
+    "shaved_ice": ("物件", "食物"),
+    "berry_(pokemon)": ("物件", "食物"),
+    "bagged_fish": ("物件", "食物"),
+    "spider_web": ("物件", "其他物件"),
+    "birdcage": ("物件", "其他物件"),
+    "faucet": ("物件", "其他物件"),
+    "cat_teaser": ("物件", "其他物件"),
+    "butterfly_net": ("物件", "其他物件"),
+    "vaulting_horse": ("物件", "其他物件"),
+    "saddle": ("物件", "其他物件"),
+    "maneki-neko": ("物件", "其他物件"),
+    "sponge": ("物件", "其他物件"),
+    "mace": ("物件", "武器"),
+    "tantou": ("物件", "武器"),
+    "military_vehicle": ("物件", "其他物件"),
+    "fighter_jet": ("物件", "其他物件"),
+    "super_robot": ("物件", "其他物件"),
+    "evangelion_(mecha)": ("物件", "其他物件"),
+    "spider_lily": ("物件", "植物花卉"),
+    "torii": ("背景", "场景"),
+    "crosswalk": ("背景", "场景"),
+    "scarlet_devil_mansion": ("背景", "场景"),
+    "roman_numeral": ("画面", "装饰"),
+    "family_crest": ("画面", "装饰"),
+    "konohagakure_symbol": ("画面", "装饰"),
+    "grimace": ("人物", "面部"),
+    "akanbe": ("人物", "面部"),
+    "eyelid_pull": ("人物", "姿势动作"),
+    "wavy_mouth": ("人物", "面部"),
+    "wavy_eyes": ("人物", "面部"),
+    "curly_eyebrows": ("人物", "面部"),
+    "digitigrade": ("人物", "体貌特征"),
+    "arthropod_limbs": ("人物", "体貌特征"),
+    "tiger_stripes": ("人物", "体貌特征"),
+    "robot_joints": ("人物", "体貌特征"),
+    "fluffy": ("人物", "体貌特征"),
+    "horseback_riding": ("人物", "姿势动作"),
+    "animal_on_lap": ("人物", "姿势动作"),
+    "flock": ("人物", "对象与数量"),
+    "implied_futanari": ("限制级", "R18"),
+    "full-package_futanari": ("限制级", "R18"),
+    # 「头发」里混的体毛 / 动作 / 物件 / 菜
+    "hair_brush": ("物件", "其他物件"),
+    "hair_dryer": ("物件", "其他物件"),
+    "ema": ("物件", "其他物件"),
+    "ponytail_holder": ("人物", "配饰"),
+    "hair_beads": ("人物", "头部配饰"),
+    "hair_bell": ("人物", "头部配饰"),
+    "ganguro": ("人物", "类型"),
+    "messy": ("人物", "其他"),
+    "pokemon": ("人物", "类型"),
 }
 L2_FIX_EXACT.update(BODY_TO_GEAR)                       # 体貌特征里混进来的装备/道具
 
