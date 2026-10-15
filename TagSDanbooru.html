@@ -406,7 +406,7 @@
                     <!-- 人工分类筛选（一级 → 二级联动；仅覆盖已人工分类的高频词条） -->
                     <div id="l1-filters" class="flex flex-wrap items-center gap-1 pb-1 hidden"></div>
                     <div id="l2-filters" class="flex flex-wrap items-center gap-1 pb-1 hidden"></div>
-                    <div id="l1-note" class="hidden text-[11px] leading-snug text-slate-500 pb-2">分类筛选只覆盖人工整理过的<span class="text-slate-400">人气前 5,000 条</span>词条，其余长尾标签不带分类；找长尾词条请用上面的搜索框。</div>
+                    <div id="l1-note" class="hidden text-[11px] leading-snug text-slate-500 pb-2">分类按钮只覆盖<span class="text-slate-400">已整理过的常用词条</span>（人气前两万名里的绝大多数）；更冷门的长尾标签只有中文、不带分类，找它们请用上面的搜索框。</div>
                     <div id="tag-list-container" class="flex-grow overflow-hidden no-scrollbar py-1 p-1 min-h-[410px]">
                         <div id="tag-list" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-2"></div>
                     </div>
@@ -1605,8 +1605,11 @@
                 }
                 elements.l1Filters.classList.remove('hidden');
                 elements.l1Note.classList.remove('hidden');
-                elements.l1Filters.title = '一级分类：仅覆盖已人工分类的 ' +
-                    Array.from(counts.values()).reduce((a, b) => a + b, 0) + ' 条热门词条';
+                const knownN = Array.from(counts.values()).reduce((a, b) => a + b, 0);
+                elements.l1Note.innerHTML = '分类按钮只覆盖当前结果里<span class="text-slate-400">已整理的 ' +
+                    knownN + ' 条</span>词条（人气前两万名里的绝大多数）；更冷门的长尾标签只有中文、' +
+                    '不带分类，找它们请用上面的搜索框。';
+                elements.l1Filters.title = '一级分类：仅覆盖已人工分类的 ' + knownN + ' 条热门词条';
                 elements.l1Filters.innerHTML = '';
                 elements.l1Filters.appendChild(makeCatBtn('全部', 'l1', 'all', null));
                 const rank1 = prefRank(L1_ORDER);

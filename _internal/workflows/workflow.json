@@ -67,7 +67,7 @@
   },
   "5": {
     "inputs": {
-      "text": "lowres, worst quality, low quality, blurry, pixelated, jpeg artifacts, bad anatomy, bad hands, extra digits, missing fingers, fused fingers, text, speech bubble, watermark, signature, logo, flat coloring, simple shading, 3d render, photorealistic, ugly, deformed, harsh brush, messy painting, plastic skin\n",
+      "text": "worst quality, old, early, low quality, lowres, signature, username, logo, bad hands, mutated hands, mammal, anthro, furry, ambiguous form, feral, semi-anthro",
       "clip": [
         "1",
         1
@@ -125,7 +125,7 @@
   },
   "9": {
     "inputs": {
-      "value": "masterpiece, best quality, amazing quality, very aesthetic, absurdres, highres, newest, intricate details, highly detailed, detailed background, sharp focus, 8k,\nanime illustration, official art, anime coloring, clean lineart, crisp lines, vibrant colors, vivid colors, high contrast, glossy highlights, detailed eyelashes, beautiful detailed face, fine hair strands, flowing hair, detailed clothing folds, soft shading, cinematic lighting, backlighting, light particles, lens flare, bokeh, depth of field, colorful\n(official art:1.15), (anime coloring:1.1)"
+      "value": "masterpiece, best quality, newest, absurdres, highres"
     },
     "class_type": "PrimitiveStringMultiline",
     "_meta": {
