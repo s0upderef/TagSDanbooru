@@ -683,9 +683,12 @@
                                 class="h-8 px-2 rounded-md bg-white/10 hover:bg-white/20">提示词</button>
                         <span class="text-slate-500 hidden md:inline">滚轮缩放 · 点图切 1:1 · ← → 换图 · Esc 关闭</span>
                     </div>
-                    <!-- 舞台：放大后在这里拖滚动条看细节 -->
-                    <div id="wb-lb-stage" class="flex-grow w-full overflow-auto flex items-center justify-center">
-                        <img id="wb-lightbox-img" class="object-contain rounded-lg shadow-2xl cursor-zoom-in" alt="">
+                    <!-- 舞台：放大后在这里滚 / 拖动看细节。
+                         注意：这里不能用 items-center / justify-center 居中 —— 内容比容器大时，
+                         居中的上方与左边会落在可滚动区域之外（只能往下拖，上面够不着）。
+                         居中的活儿交给图片自己的 m-auto：小图居中，大图贴左上、四个方向都能滚。 -->
+                    <div id="wb-lb-stage" class="flex-grow w-full overflow-auto flex">
+                        <img id="wb-lightbox-img" class="m-auto shrink-0 object-contain rounded-lg shadow-2xl cursor-zoom-in" alt="">
                     </div>
                     <!-- 中文对照：把这一张所属批次的提示词按原顺序逐条显示「中文 + english」，可整块折叠 -->
                     <div id="wb-lb-tagpanel" class="w-full max-w-[92vw] shrink-0">
@@ -2456,17 +2459,21 @@
             if (!img) return;
             const nat = img.naturalWidth ? img.naturalWidth + '×' + img.naturalHeight : '';
             if (lbScale === null) {
-                img.classList.add('max-h-full', 'max-w-full');
-                img.style.width = '';
-                img.style.height = '';
                 img.classList.add('cursor-zoom-in');
                 img.classList.remove('cursor-zoom-out');
+                img.style.width = '';
+                img.style.height = '';
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '100%';
             } else {
-                img.classList.remove('max-h-full', 'max-w-full');
-                img.style.width = Math.round((img.naturalWidth || 768) * lbScale) + 'px';
-                img.style.height = 'auto';
                 img.classList.add('cursor-zoom-out');
                 img.classList.remove('cursor-zoom-in');
+                // Tailwind 的 preflight 给 img 写了 max-width:100% / height:auto，
+                // 只删类名压不住它，必须用内联样式盖掉，否则放大到超过一屏宽就没效果了
+                img.style.maxWidth = 'none';
+                img.style.maxHeight = 'none';
+                img.style.width = Math.round((img.naturalWidth || 768) * lbScale) + 'px';
+                img.style.height = 'auto';
             }
             if (E.lbZoomLabel) {
                 E.lbZoomLabel.textContent = (nat ? nat + '　' : '') +
@@ -2476,28 +2483,40 @@
             if (E.lbZoomFit) E.lbZoomFit.classList.toggle('ring-2', lbScale === null);
         }
 
-        function setLightboxZoom(scale, keepScroll) {
-            const st = E.lbStage;
-            const sx = keepScroll && st ? st.scrollLeft : 0;
-            const sy = keepScroll && st ? st.scrollTop : 0;
+        function setLightboxZoom(scale, anchorClient) {
+            // anchorClient：视口坐标（鼠标位置）。缩放后让「鼠标底下那一点」保持在原地，
+            // 不传就以「舞台中心」为锚点。用 getBoundingClientRect 做换算，margin auto 的布局也安全。
+            const st = E.lbStage, img = E.lightboxImg;
+            const sr = st ? st.getBoundingClientRect() : null;
+            const anchor = anchorClient || (sr
+                ? { x: sr.left + st.clientWidth / 2, y: sr.top + st.clientHeight / 2 } : null);
+            const before = img.getBoundingClientRect();
+            const fx = before.width ? (anchor ? (anchor.x - before.left) / before.width : 0.5) : 0.5;
+            const fy = before.height ? (anchor ? (anchor.y - before.top) / before.height : 0.5) : 0.5;
             lbScale = scale;
             applyLightboxZoom();
-            if (st) requestAnimationFrame(() => { st.scrollLeft = sx; st.scrollTop = sy; });
+            if (!st || !anchor) return;
+            requestAnimationFrame(() => {
+                const after = img.getBoundingClientRect();
+                st.scrollLeft += (after.left + fx * after.width) - anchor.x;
+                st.scrollTop += (after.top + fy * after.height) - anchor.y;
+            });
         }
 
-        function zoomLightbox(delta) {           // +1 放大 / -1 缩小
+        function zoomLightbox(delta, anchorClient) {   // +1 放大 / -1 缩小
             if (lbScale === null) {
-                setLightboxZoom(delta > 0 ? 1 : null, true);
+                setLightboxZoom(delta > 0 ? 1 : null, anchorClient);
                 return;
             }
             const i = Math.max(0, LB_ZOOM_STEPS.indexOf(lbScale));
             const j = i + delta;
-            setLightboxZoom(j < 0 ? null : LB_ZOOM_STEPS[Math.min(j, LB_ZOOM_STEPS.length - 1)], true);
+            setLightboxZoom(j < 0 ? null : LB_ZOOM_STEPS[Math.min(j, LB_ZOOM_STEPS.length - 1)], anchorClient);
         }
 
-        function toggleLightboxZoom() {
+        function toggleLightboxZoom(ev) {
             if (lbDragMoved) { lbDragMoved = false; return; }    // 刚才是拖动看图，不算点击
-            setLightboxZoom(lbScale === null ? 1 : null, true);
+            const anchor = ev ? { x: ev.clientX, y: ev.clientY } : null;
+            setLightboxZoom(lbScale === null ? 1 : null, anchor);
         }
 
         (function initLightboxZoom() {
@@ -2508,7 +2527,7 @@
                 E.lbStage.addEventListener('wheel', e => {
                     if (E.lightbox.classList.contains('hidden')) return;
                     e.preventDefault();                          // 灯箱里滚轮 = 缩放，别带动页面
-                    zoomLightbox(e.deltaY < 0 ? 1 : -1);
+                    zoomLightbox(e.deltaY < 0 ? 1 : -1, { x: e.clientX, y: e.clientY });
                 }, { passive: false });
             }
             if (E.lbZoomIn) E.lbZoomIn.addEventListener('click', () => zoomLightbox(1));
