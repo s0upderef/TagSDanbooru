@@ -1065,7 +1065,8 @@ L2_NECK = ("choker", "necklace", "pendant", "collar_chain", "collar_pin", "tie_c
            "围巾", "颈部", "颈带", "颈铃")
 # 上面这些词命中时，如果整词其实是「衣服本体」，仍归上衣
 L2_NECK_BODY = ("shirt", "sweater", "vest", "jacket", "coat", "blouse", "dress", "apron", "hoodie",
-                "jumper", "衬衫", "衬衣", "毛衣", "外套", "夹克", "连衣裙", "上衣", "卫衣", "马甲")
+                "jumper", "turtleneck", "leotard", "bodysuit",
+                "衬衫", "衬衣", "毛衣", "外套", "夹克", "连衣裙", "上衣", "卫衣", "马甲")
 L2_BREAST = ("breast", "nipple", "areola", "cleavage", "underboob", "sideboob", "pectoral", "pecs",
              "flat_chest", "chest_hair", "乳沟", "乳房", "乳头", "乳首", "胸肌", "胸部", "胸毛",
              "南半球", "欧派")
@@ -1186,7 +1187,7 @@ L2_LOWER = ("skirt", "pants", "shorts", "jeans", "bloomers", "hakama", "harem_pa
             "百褶裙", "褶裙", "迷你裙", "内裤", "短裤", "牛仔裤", "灯笼裤", "围裙", "裙子")
 L2_UPPER = ("shirt", "sweater", "hoodie", "jacket", "coat", "blazer", "cardigan", "vest", "tank_top",
             "camisole", "crop_top", "blouse", "t-shirt", "apron", "sleeve", "bra", "corset",
-            "suspenders", "shawl", "suit",
+            "suspenders", "shawl", "suit", "turtleneck",
             "上衣", "衬衫", "衬衣", "毛衣", "卫衣", "背心", "外套", "夹克", "大衣", "风衣", "短袖",
             "长袖", "无袖", "胸罩", "内衣", "袖子", "翻领", "开衫", "马甲", "抹胸", "胸衣", "背带",
             "button", "drawstring", "纽扣", "抽绳", "扣子",
@@ -1593,6 +1594,42 @@ L2_FIX_EXACT = {
     "ganguro": ("人物", "类型"),
     "messy": ("人物", "其他"),
     "pokemon": ("人物", "类型"),
+    # 「脖子」里混的：抓领子（动作）/ 连体衣 / 锁骨
+    "necktie_grab": ("人物", "姿势动作"),
+    "collar_grab": ("人物", "姿势动作"),
+    "collar_tug": ("人物", "姿势动作"),
+    "scarf_grab": ("人物", "姿势动作"),
+    "sailor_collar_lift": ("人物", "姿势动作"),
+    "collared_leotard": ("人物", "全身衣装"),
+    "collared_bodysuit": ("人物", "全身衣装"),
+    "collared_shrug": ("人物", "上身衣装"),
+    "turtleneck_leotard": ("人物", "全身衣装"),
+    "turtleneck_bodysuit": ("人物", "全身衣装"),
+    "sleeveless_turtleneck_leotard": ("人物", "全身衣装"),
+    "miku_collar_bikini": ("人物", "全身衣装"),
+    "mascot_costume": ("人物", "全身衣装"),
+    "v-neck": ("人物", "上身衣装"),
+    "plunging_neckline": ("人物", "上身衣装"),
+    "collarbone": ("人物", "体貌特征"),
+    "covered_collarbone": ("人物", "体貌特征"),
+    "mole_on_collarbone": ("人物", "体貌特征"),
+    # 「鞋袜」里混的：脱/拉（动作）、头盔（头饰）、摩天轮（物件）
+    "pantyhose_pull": ("人物", "姿势动作"),
+    "thighhighs_pull": ("人物", "姿势动作"),
+    "sock_pull": ("人物", "姿势动作"),
+    "shoe_dangle": ("人物", "姿势动作"),
+    "sock_dangle": ("人物", "姿势动作"),
+    "heel_up": ("人物", "姿势动作"),
+    "arm_garter": ("人物", "配饰"),
+    "spiked_helmet": ("人物", "头部配饰"),
+    "pinwheel_hair_ornament": ("人物", "头部配饰"),
+    "getabako": ("物件", "家具与家居"),
+    "ferris_wheel": ("物件", "其他物件"),
+    "pinwheel": ("物件", "其他物件"),
+    "wheelbarrow": ("物件", "其他物件"),
+    "windsock": ("物件", "其他物件"),
+    "ship's_wheel": ("物件", "其他物件"),
+    "phone_booth": ("背景", "场景"),
 }
 L2_FIX_EXACT.update(BODY_TO_GEAR)                       # 体貌特征里混进来的装备/道具
 
