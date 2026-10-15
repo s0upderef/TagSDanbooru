@@ -1213,14 +1213,18 @@ FRAME_TO_POSE = ("holding", "hold_", "hug", "carry", "carrying", "walk", "run", 
                  "arm_support", "sit", "stand", "lying", "lie_", "biting", "fingering", "arm_hug",
                  "crossed_arms", "cheek-to-cheek", "against_wall", "midair")
 FRAME_TO_BODY = ("forearms", "calves", "back_muscles", "arm_fins", "animal_legs", "very_hairy",
-                 "armpit_hair", "sweaty_armpits", "smelly_armpits")
+                 "armpit_hair", "sweaty_armpits", "smelly_armpits", "rayman_limbs", "armless_amputee",
+                 "reverse-jointed_legs", "gill", "single_bare_foot", "navel_peek", "ass_peek",
+                 "no_prosthetic_arm", "swaddled")
+FRAME_TO_FACE = ("horizontal_pupils", "vertical_pupils", "star-shaped_pupils")
 FRAME_VIEW = ("full_body", "full-body", "upper_body", "lower_body", "portrait", "close-up", "closeup",
               "cowboy_shot", "fisheye", "wide_shot", "out_of_frame", "cropped", "focus", "zoom",
-              "全身", "上半身", "下半身", "半身像", "特写", "出框")
+              "全身", "半身", "特写", "出框")
 FRAME_STANCE = ("facing", "profile", "from_behind", "from_side", "looking", "staring", "glance",
-                "three_quarter", "selfie", "背对", "侧脸", "正脸", "看向", "视线", "回眸", "凝视")
+                "three_quarter", "selfie", "subject look", "背对", "侧脸", "正脸", "看向", "视线",
+                "回眸", "凝视")
 FRAME_ANGLE = ("pov", "viewer", "dutch_angle", "from_above", "from_below", "aerial", "bird", "worm",
-               "angle", "upside-down", "panoramic", "eye level", "top-down", "ground view",
+               "angle", "upside-down", "panoramic", "eye level", "top-down", "top down", "ground view",
                "side view", "俯视", "仰视", "视角", "视点")
 
 
@@ -1230,12 +1234,17 @@ def split_framing(name, zh):
     hay = n + " " + (zh or "")
     if n in FRAME_EXACT:
         return FRAME_EXACT[n]
+    if n.endswith(("_girl", "_boy")) or n == "half-harpy":
+        return ("人物", "类型")
     for k in FRAME_TO_POSE:
         if k in n:
             return ("人物", "姿势动作")
     for k in FRAME_TO_BODY:
         if k in n:
             return ("人物", "体貌特征")
+    for k in FRAME_TO_FACE:
+        if k in n:
+            return ("人物", "面部")
     for k in FRAME_VIEW:
         if k in hay:
             return ("构图取景", "取景")
