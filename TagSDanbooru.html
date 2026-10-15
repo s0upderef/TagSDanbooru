@@ -651,10 +651,27 @@
                                 class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
                             <i class="fa-solid fa-trash-can text-red-400"></i> 删除这一批
                         </button>
+                        <button id="wb-del-series" title="把当前系列的全部批次送进回收站（可从回收站还原）"
+                                class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-trash-can text-red-400"></i> 删除这个系列
+                        </button>
+                        <button id="wb-del-all" title="把 _internal/output/ 里的全部批次送进回收站（可从回收站还原）"
+                                class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
+                            <i class="fa-solid fa-trash-can text-red-400"></i> 删除全部
+                        </button>
                     </div>
                 </div>
                 <div id="wb-seriesbar" class="flex flex-wrap gap-1 mb-2"></div>
                 <div id="wb-runbar" class="flex flex-wrap gap-1 mb-2"></div>
+                <!-- 本次出图：独立一区。出图时**绝不动**下面那块画廊，
+                     否则「上一张已经出好的图」会被新批次的占位格子顶掉，看起来像在重新生成。 -->
+                <div id="wb-live" class="hidden mb-2 rounded-md border border-sky-800/60 bg-slate-900/40 p-2">
+                    <div class="flex flex-wrap items-center gap-2 text-xs text-slate-300 mb-1">
+                        <span class="font-semibold"><i class="fa-solid fa-spinner fa-spin text-sky-400"></i> 本次出图</span>
+                        <span id="wb-live-info" class="text-slate-400"></span>
+                    </div>
+                    <div id="wb-live-gallery" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2"></div>
+                </div>
                 <div id="wb-gallery" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2"></div>
 
                 <!-- 灯箱：页面内放大看图，← → 切换，Esc 关闭 -->
@@ -1940,8 +1957,10 @@
             shutdown: $('wb-shutdown'),
             progress: $('wb-progress'), progressText: $('wb-progress-text'), runInfo: $('wb-run-info'),
             gallery: $('wb-gallery'), galleryInfo: $('wb-gallery-info'),
+            live: $('wb-live'), liveInfo: $('wb-live-info'), liveGallery: $('wb-live-gallery'),
             seriesbar: $('wb-seriesbar'), runbar: $('wb-runbar'),
-            openDir: $('wb-open-dir'), delRun: $('wb-del-run'), reload: $('wb-reload'),
+            openDir: $('wb-open-dir'), delRun: $('wb-del-run'), delSeries: $('wb-del-series'),
+            delAll: $('wb-del-all'), reload: $('wb-reload'),
             lightbox: $('wb-lightbox'), lightboxImg: $('wb-lightbox-img'),
             lightboxTags: $('wb-lightbox-tags'), lightboxTagInfo: $('wb-lightbox-tag-info'),
             lightboxCap: $('wb-lightbox-cap'), lightboxPrev: $('wb-lightbox-prev'),
@@ -2311,7 +2330,12 @@
         }
 
         function openLightbox(src) {
-            const i = galleryImages.findIndex(g => g.src === src);
+            let i = galleryImages.findIndex(g => g.src === src);
+            if (i < 0) {
+                // 不在导航列表里（比如「本次出图」那张还没归档）：临时补一条，别弹到别的图上
+                rememberImage({ src: src, seed: null, runId: null, prompt: '' });
+                i = galleryImages.length - 1;
+            }
             lbIndex = i < 0 ? 0 : i;
             showLightbox();
         }
@@ -2320,7 +2344,8 @@
             const g = galleryImages[lbIndex];
             if (!g) return;
             E.lightboxImg.src = g.src;
-            E.lightboxCap.textContent = (lbIndex + 1) + ' / ' + galleryImages.length + '　seed ' + g.seed;
+            E.lightboxCap.textContent = (lbIndex + 1) + ' / ' + galleryImages.length +
+                '　seed ' + (g.seed == null ? '—' : g.seed);
             renderLightboxTags(g);
             E.lightbox.classList.remove('hidden');
             E.lightbox.classList.add('flex');
@@ -2438,16 +2463,49 @@
             return String(urlPath || '').split('/').pop();
         }
 
-        async function doDelete(runId, fileUrl, what) {
-            if (!runId) { E.progressText.textContent = '当前没有可删除的批次'; return; }
-            const body = fileUrl ? { run_id: runId, file: bareName(fileUrl) } : { run_id: runId };
+        /* ---------------- 删除：三种粒度 + 单张，全部进回收站 ----------------
+           同一个接口，body 不同：
+             {run_id, file} 删单张 / {run_id} 删某个批次 / {series} 删某个系列 / {all:true} 删全部
+           服务端会拒绝删还在生成中的批次，output/ 之外一律 403，送回收站失败就不删。 */
+        function batchCountText(r) {
+            return '（' + galleryItems(r).length + ' 张）';
+        }
+
+        function scopeCountText(rs) {
+            const names = [];
+            rs.forEach(r => { const n = seriesOf(r); if (names.indexOf(n) === -1) names.push(n); });
+            return '（' + names.length + ' 个系列 / ' + rs.length + ' 批 / ' + countImages(rs) + ' 张）';
+        }
+
+        async function doDeleteReq(body, what) {
             E.progressText.textContent = '正在删除…';
             let r;
             try { r = await api.post('/local/delete', body); }
-            catch (err) { E.progressText.textContent = '删除失败：' + err.message; return; }
-            if (!r.ok) { E.progressText.textContent = '删除失败：' + (r.error || '未知原因'); return; }
-            E.progressText.textContent = what + '已删除（已移入回收站，可从回收站还原）';
+            catch (err) { E.progressText.textContent = '删除失败：' + err.message; return false; }
+            if (!r.ok) { E.progressText.textContent = '删除失败：' + (r.error || '未知原因'); return false; }
+            const n = (typeof r.deleted_files === 'number' && r.deleted_files >= 0)
+                ? ('（' + r.deleted_files + ' 张）') : '';
+            E.progressText.textContent = what + '已删除' + n + '，已移入回收站，可从回收站还原';
             await loadHistory();
+            return true;
+        }
+
+        async function doDelete(runId, fileUrl, what) {
+            if (!runId) { E.progressText.textContent = '当前没有可删除的批次'; return; }
+            const body = fileUrl ? { run_id: runId, file: bareName(fileUrl) } : { run_id: runId };
+            await doDeleteReq(body, what);
+        }
+
+        // 系列 / 批次卡片上的小垃圾桶：第一次点变红等确认，3 秒内再点才真删
+        function delSeriesNow(name, el) {
+            const rs = runsOfSeries(name);
+            confirmThen(el, '确认删除？', () => doDeleteReq({ series: name }, '系列「' + name + '」'));
+            E.progressText.textContent = '再点一次就删掉系列「' + name + '」' + scopeCountText(rs) + '（进回收站，可还原）';
+        }
+
+        function delRunNow(run, el) {
+            confirmThen(el, '确认删除？', () => doDelete(run.run_id, null, '这一批'));
+            E.progressText.textContent = '再点一次就删掉这一批' + batchCountText(run) + '（进回收站，可还原）';
         }
 
         // ↻ 用这张图的参数回填表单（**不动提示词**）——「保留构图，只改提示词」的最常用动作
@@ -2483,8 +2541,17 @@
             scrollToBoard();
         }
 
-        // 合并视图里不同批次的 index 会重名，所以用 uid 生成单元格 id
-        const cellKey = (it) => String(it.uid || it.index).replace(/[^0-9a-zA-Z]/g, '_');
+        // 格子 id 必须带上批次号：只用序号的话换一批就会撞车
+        // （旧批次那一格会被新批次的占位格子「顶替」，看起来像那张图在重新生成）
+        const cellKeyOf = (runId, it) =>
+            String(it.uid || ((runId || '') + '#' + it.index)).replace(/[^0-9a-zA-Z]/g, '_');
+
+        // 灯箱导航列表：同一张图只记一次（本次出图那区也会往这里补）
+        function rememberImage(g) {
+            if (!g || !g.src) return;
+            if (galleryImages.some(x => x.src === g.src)) return;
+            galleryImages.push(g);
+        }
 
         // 已结束的批次里「没有图」的格子（图片被删掉 / 生成失败）不再占位：
         // 否则删图后画廊会留一个空荡荡的「等待中」格子，张数也会虚报。
@@ -2501,8 +2568,10 @@
                 E.gallery.innerHTML = '<p class="text-xs text-slate-500 col-span-full">本次没有成功排队的任务。</p>';
                 return;
             }
+            const runId = run.run_id || '';
+            const cellKey = (it) => cellKeyOf(runId, it);
             // 用「批次号 + 格子清单」当签名：加图、删图都会让签名变化，从而立刻重建
-            const sig = run.run_id + '|' + items.map(cellKey).join(',');
+            const sig = runId + '|' + items.map(cellKey).join(',');
             if (E.gallery.dataset.sig !== sig) {
                 E.gallery.dataset.sig = sig;
                 E.gallery.innerHTML = '';
@@ -2531,8 +2600,8 @@
                 cell.appendChild(img);
                 // 记下这张图所属批次的提示词：灯箱用它做中文对照
                 const ownerRun = (it.run_id && runById(it.run_id)) || run;
-                galleryImages.push({ src: src, seed: it.seed, runId: (ownerRun && ownerRun.run_id) || null,
-                                     prompt: (ownerRun && ownerRun.positive) || '' });
+                rememberImage({ src: src, seed: it.seed, runId: (ownerRun && ownerRun.run_id) || null,
+                                prompt: (ownerRun && ownerRun.positive) || '' });
 
                 const caption = document.createElement('span');
                 caption.className = 'absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-1 py-0.5 truncate';
@@ -2593,13 +2662,23 @@
             return rs.length ? rs[0].series_dir : null;
         }
 
-        function chipButton(text, title, active, onClick) {
+        function chipButton(text, title, active, onClick, onDelete) {
             const b = document.createElement('button');
-            b.className = 'h-6 px-2 text-xs rounded-md transition-colors duration-200 ' +
+            b.className = 'group h-6 pl-2 pr-1 text-xs rounded-md transition-colors duration-200 inline-flex items-center gap-1 ' +
                 (active ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600');
-            b.textContent = text;
+            const label = document.createElement('span');
+            label.textContent = text;
+            b.appendChild(label);
             b.title = title;
             b.addEventListener('click', onClick);
+            // 每个系列 / 批次卡片自带一个小垃圾桶：不用先切视图也能直接删掉它
+            if (onDelete) {
+                const del = document.createElement('span');
+                del.className = 'ml-0.5 px-1 rounded text-red-300 hover:text-red-100 hover:bg-black/40 opacity-0 group-hover:opacity-100';
+                del.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+                del.addEventListener('click', (e) => { e.stopPropagation(); onDelete(del); });
+                b.appendChild(del);
+            }
             return b;
         }
 
@@ -2629,13 +2708,14 @@
                 const rs = runsOfSeries(n);
                 E.seriesbar.appendChild(chipButton(
                     n + ' · ' + rs.length + '批/' + countImages(rs) + '张',
-                    '系列：' + n + '\n同一流程的图都收在 _internal/output/' + n + '/',
+                    '系列：' + n + '\n同一流程的图都收在 _internal/output/' + n + '/\n点右边的垃圾桶可以删掉这个系列',
                     currentSeries === n,
                     () => {
                         currentSeries = n;
                         currentRunId = ALL;
                         renderSeriesbar(); renderRunbar(); renderGallery(currentView());
-                    }));
+                    },
+                    (el) => delSeriesNow(n, el)));
             });
         }
 
@@ -2651,9 +2731,10 @@
             rs.forEach(r => {
                 E.runbar.appendChild(chipButton(
                     fmtTime(r.created) + ' · ' + galleryItems(r).length + '张',
-                    r.run_id + (r.positive ? ('\n' + r.positive) : ''),
+                    r.run_id + (r.positive ? ('\n' + r.positive) : '') + '\n点右边的垃圾桶可以删掉这一批',
                     currentRunId === r.run_id,
-                    () => { currentRunId = r.run_id; renderRunbar(); renderGallery(r); }));
+                    () => { currentRunId = r.run_id; renderRunbar(); renderGallery(r); },
+                    (el) => delRunNow(r, el)));
             });
         }
 
@@ -2722,39 +2803,158 @@
             E.generate.classList.toggle('cursor-not-allowed', state);
         }
 
+        /* ---------------- 「本次出图」区 ----------------
+           出图期间**绝不动** #wb-gallery：已经出好的图原地保留（照样能点开灯箱 / 删 / 看中文对照），
+           新批次只占上面这块独立区域。旧代码在 generate() 里先 innerHTML='' 清空整个画廊、
+           再用新批次的占位格子重建 —— 于是「上一张已经出好的图」连格子一起消失、原地变成
+           「等待中」，看起来就像那张图又在生成。 */
+        const POLL_MS = 1500;
+        const POLL_FAIL_LIMIT = 4;              // 连续拿不到合法 run 就收摊（服务重启 / 批次已被删空）
+        const POLL_STALL_MS = 16 * 60 * 1000;   // 兜底解锁（服务端自己 15 分钟会超时，这里再晚一点）
+        let livePolls = 0, liveStall = 0;
+
+        function beginLive(count, series) {
+            if (!E.live || !E.liveGallery) return;
+            E.live.classList.remove('hidden');
+            E.liveGallery.innerHTML = '';
+            livePolls = 0;
+            liveStall = Date.now();
+            const n = Math.max(1, Number(count) || 1);
+            for (let i = 0; i < n; i++) {
+                const cell = document.createElement('div');
+                cell.id = 'wb-live-cell-' + i;
+                cell.className = 'relative rounded-md overflow-hidden bg-slate-900 border border-slate-700 aspect-[3/4] flex items-center justify-center';
+                cell.innerHTML = '<span class="text-xs text-slate-500">排队中</span>';
+                E.liveGallery.appendChild(cell);
+            }
+            E.liveInfo.textContent = '已提交 ' + n + ' 张' + (series ? ('　·　系列 ' + series) : '');
+        }
+
+        function endLive() {
+            if (!E.live || !E.liveGallery) return;
+            E.live.classList.add('hidden');
+            E.liveGallery.innerHTML = '';
+            E.liveInfo.textContent = '';
+        }
+
+        // 这一格为什么还没图：说实在的，别一律「等待中」
+        function liveCellLabel(it) {
+            if (it.status === 'pending') return '排队中';
+            if (it.status === 'cancelled') return '已中断';
+            if (it.status === 'timeout') return '超时未出图';
+            if (it.status === 'done') return '这一格没有图';
+            return '未出图';
+        }
+
+        // 只重画「本次出图」这一块，画廊里的历史图一个都不碰
+        function renderLive(run) {
+            if (!E.live || !E.liveGallery || !run) return;
+            if (E.live.classList.contains('hidden')) beginLive(run.queued || run.count, run.series);
+            const items = run.items || [];
+            items.forEach((it, i) => {
+                const cell = $('wb-live-cell-' + i);
+                if (!cell) return;
+                const src = (it.files && it.files[0]) || (it.live && it.live[0]);
+                if (src) {
+                    if (cell.dataset.src === src) return;
+                    cell.dataset.src = src;
+                    cell.innerHTML = '';
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.loading = 'lazy';
+                    img.className = 'w-full h-full object-cover cursor-zoom-in';
+                    img.addEventListener('click', () => openLightbox(src));
+                    cell.appendChild(img);
+                    const cap = document.createElement('span');
+                    cap.className = 'absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-1 py-0.5 truncate';
+                    cap.textContent = 'seed ' + it.seed;
+                    cell.appendChild(cap);
+                    rememberImage({ src: src, seed: it.seed, runId: run.run_id, prompt: run.positive || '' });
+                } else if (cell.dataset.src !== '') {
+                    cell.dataset.src = '';
+                    cell.innerHTML = '<span class="text-xs text-slate-500">' + liveCellLabel(it) + '</span>';
+                }
+            });
+            // 提交时按「张数」建了格子，但可能有几张根本没排上队
+            const cells = E.liveGallery.children;
+            for (let i = items.length; i < cells.length; i++) {
+                const cell = cells[i];
+                if (cell.dataset.src === '') continue;
+                cell.dataset.src = '';
+                cell.innerHTML = '<span class="text-xs text-slate-500">未排队</span>';
+            }
+            const total = run.queued || run.count || items.length || 1;
+            const done = items.filter(it => (it.files && it.files[0]) || (it.live && it.live[0])).length;
+            E.liveInfo.textContent = (run.status === 'running' ? '生成中' : '收尾中') + '　' + done + '/' + total
+                + (run.series ? ('　·　系列 ' + run.series) : '')
+                + (run.warning ? ('　·　' + run.warning) : '');
+        }
+
+        // 停表 + **一定**把「开始出图」解锁（以前异常路径会让按钮永久变灰）
+        function stopPolling(msg) {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = null;
+            setBusy(false);
+            if (msg) E.progressText.textContent = msg;
+        }
+
         function startPolling(runId) {
             if (pollTimer) clearInterval(pollTimer);
+            livePolls = 0;
+            liveStall = Date.now();
+            let lastDone = -1;
             const tick = async () => {
-                let d;
-                try { d = await api.get('/local/run/' + runId); } catch (err) { return; }
-                const run = d.run;
+                let run = null;
+                try {
+                    const d = await api.get('/local/run/' + runId);
+                    run = d && d.run;
+                } catch (err) { run = null; }
+                if (!run) {
+                    // 看门狗：服务重启、批次被删空…任何情况下都不能把界面锁死在「生成中」
+                    livePolls += 1;
+                    if (livePolls >= POLL_FAIL_LIMIT) {
+                        endLive();
+                        stopPolling('这一批的状态查不到了（服务可能重启过），已自动重新同步画廊');
+                        await loadHistory();
+                    }
+                    return;
+                }
+                livePolls = 0;
                 const total = run.queued || run.count || 1;
                 const done = run.done_count || 0;
+                if (done !== lastDone) { lastDone = done; liveStall = Date.now(); }
                 E.progress.style.width = Math.round(done / total * 100) + '%';
                 E.runInfo.textContent = run.run_id;
+                renderLive(run);
                 if (run.status === 'running') {
-                    E.progressText.textContent = '生成中… ' + done + '/' + total;
+                    E.progressText.textContent = '生成中… ' + done + '/' + total + '（已有的出图不受影响，在下面的画廊里）';
                     E.galleryInfo.textContent = '已出 ' + done + ' / ' + total + ' 张';
-                } else if (run.status === 'done') {
+                    if (Date.now() - liveStall > POLL_STALL_MS) {
+                        endLive();
+                        stopPolling('这一批迟迟没有进展，已停止跟踪（可去 ComfyUI 看一眼队列；出完后点「刷新图片」）');
+                    }
+                    return;
+                }
+                if (run.status === 'done') {
                     E.progressText.textContent = '完成，共 ' + (run.saved || 0) + ' 张 · 已归档到 _internal/output/'
-                        + (run.series || '未归类') + '/' + run.run_id + '/';
-                    clearInterval(pollTimer); pollTimer = null; setBusy(false);
-                    currentRunId = run.run_id;
-                    renderGallery(run);
-                    loadHistory(run.run_id);
+                        + (run.series || '未归类') + '/' + run.run_id + '/'
+                        + (run.warning ? ('　·　' + run.warning) : '');
+                    stopPolling();
+                    endLive();                    // 跑完才收掉这一区，下面的画廊这时才切到新批次
+                    await loadHistory(run.run_id);
                 } else {
                     E.progressText.textContent = '失败：' + (run.error || '未知原因');
                     E.galleryInfo.textContent = '';
-                    clearInterval(pollTimer); pollTimer = null; setBusy(false);
+                    endLive();
+                    stopPolling();
                 }
-                renderGallery(run);
             };
             tick();
-            pollTimer = setInterval(tick, 1500);
+            pollTimer = setInterval(tick, POLL_MS);
         }
 
         async function generate() {
-            if (busy) return;
+            if (busy) { E.progressText.textContent = '上一批还在跑：等它结束，或先点「中断」'; return; }
             const positive = promptFromBoard().trim();
             if (!positive) {
                 E.progressText.textContent = '还没有选标签：正向提示词 = 左侧「已选标签」，点几个标签，或用「粘贴提示词」解析一段';
@@ -2786,19 +2986,21 @@
             setBusy(true);
             E.progressText.textContent = '正在提交…';
             E.progress.style.width = '2%';
-            E.gallery.innerHTML = '';
-            galleryImages.length = 0;
-            E.gallery.dataset.sig = '';
+            // 关键：**不清空**画廊。已经出好的图原地保留（还能点开灯箱 / 删 / 看中文对照），
+            // 新批次只占上面那块「本次出图」区，跑完再把它切到画廊里。
+            beginLive(Number(E.count.value) || 1, E.series.value.trim());
             let res;
             try {
                 res = await api.post('/local/generate', body);
             } catch (err) {
                 setBusy(false);
+                endLive();
                 E.progressText.textContent = '请求出错：' + err.message;
                 return;
             }
             if (!res.ok) {
                 setBusy(false);
+                endLive();
                 E.progressText.textContent = '提交失败：' + (res.error || JSON.stringify(res.errors || res));
                 return;
             }
@@ -2866,11 +3068,31 @@
         });
         E.delRun.addEventListener('click', () => {
             if (currentRunId === ALL) {
-                E.progressText.textContent = '「全部」是合并视图，请先选一个具体批次再整批删除，或逐张删';
+                E.progressText.textContent = '「全部」是合并视图：直接点批次条上那一批的垃圾桶，'
+                    + '或先选一个批次再删，也可以用「删除这个系列」/「删除全部」';
                 return;
             }
             if (!currentRunId) { E.progressText.textContent = '当前没有可删除的批次'; return; }
-            confirmThen(E.delRun, '确认删除整批？', () => doDelete(currentRunId, null, '整批'));
+            const r = runById(currentRunId);
+            confirmThen(E.delRun, '确认删除这一批？', () => doDelete(currentRunId, null, '这一批'));
+            E.progressText.textContent = '再点一次就删掉这一批' + (r ? batchCountText(r) : '')
+                + '（进回收站，可还原）';
+        });
+        // 删某个系列（该系列的全部批次）
+        E.delSeries.addEventListener('click', () => {
+            if (!currentSeries) { E.progressText.textContent = '当前没有可删除的系列'; return; }
+            const rs = runsOfSeries(currentSeries);
+            confirmThen(E.delSeries, '确认删除这个系列？', () =>
+                doDeleteReq({ series: currentSeries }, '系列「' + currentSeries + '」'));
+            E.progressText.textContent = '再点一次就删掉系列「' + currentSeries + '」'
+                + scopeCountText(rs) + '（进回收站，可还原）';
+        });
+        // 删全部（_internal/output/ 里的所有系列、所有批次）
+        E.delAll.addEventListener('click', () => {
+            if (!allRuns.length) { E.progressText.textContent = '还没有可删除的出图'; return; }
+            confirmThen(E.delAll, '确认删除全部？', () => doDeleteReq({ all: true }, '全部出图'));
+            E.progressText.textContent = '再点一次就删掉全部出图'
+                + scopeCountText(allRuns) + '（进回收站，可还原）';
         });
         E.shutdown.addEventListener('click', () => {
             confirmThen(E.shutdown, '确认关闭？', async () => {

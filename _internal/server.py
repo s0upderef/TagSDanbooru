@@ -569,10 +569,66 @@ async def archive_run(app, run):
     log("归档完成：%s（%d 张）-> %s" % (run["run_id"], saved, outdir))
 
 
+RUN_TIMEOUT_SEC = 900        # 一批图最长跟踪时间：超过就收摊，绝不让界面永远停在「生成中」
+RUN_STALL_SEC = 180          # 一直没有新图产出的提示阈值（只记日志，不打断）
+
+
+def _comfy_output_dir():
+    """ComfyUI 自己的 output/ 目录（SaveImage 先写这里，再由我们取回归档）。"""
+    d = CMF.get("dir") or ""
+    return (Path(d) / "output") if d else None
+
+
+def _salvage_from_disk(run_id, index):
+    """history 说完成了却没给图时，去 ComfyUI 的 output/<前缀>/<run_id>/ 捡一次。
+
+    文件名是「NN_00001_.png」（NN 就是这一批的第几张），所以能精确对上是哪一项；
+    捡到什么算什么，捡不到就返回空列表（调用方会记 no_image）。
+    """
+    try:
+        base = _comfy_output_dir()
+        if not base:
+            return []
+        folder = base / (CFG["defaults"].get("filename_prefix") or "tagsd") / run_id
+        if not folder.is_dir():
+            return []
+        prefix = "%02d" % (index + 1)
+        out = []
+        for p in sorted(folder.iterdir()):
+            if not p.is_file() or not p.name.startswith(prefix + "_"):
+                continue
+            out.append({"filename": p.name,
+                        "subfolder": "%s/%s" % ((CFG["defaults"].get("filename_prefix") or "tagsd"),
+                                                run_id),
+                        "type": "output"})
+        return out
+    except Exception as exc:
+        log("从磁盘抢救 %s 第 %d 张失败：%s" % (run_id, index + 1, exc))
+        return []
+
+
+def _drop_run(run_id):
+    """从内存里摘掉一个批次，并且**取消**它的跟踪任务。
+
+    只 pop 不 cancel 的话，后台任务收尾时的 archive_run 会把刚删掉的目录又建回来。
+    """
+    RUNS.pop(run_id, None)
+    task = TASKS.pop(run_id, None)
+    if task is not None and not task.done():
+        task.cancel()
+
+
 async def track_run(app, run_id):
-    """后台跟踪一个 run 的所有 prompt，全部完成后归档。"""
+    """后台跟踪一个 run 的所有 prompt，全部完成后归档。
+
+    两条硬边界，保证 run 不会永远停在 running（界面也就不再永远「生成中」）：
+      * RUN_TIMEOUT_SEC 内没结束 -> 剩下的项标成 timeout，已出的图照样归档；
+      * /history 说完成但没给图 -> 去 ComfyUI 的 output 目录按文件名捡一次。
+    """
     run = RUNS[run_id]
     started = time.time()
+    last_progress = started
+    warned = False
     try:
         while True:
             for item in run["items"]:
@@ -589,8 +645,16 @@ async def track_run(app, run_id):
                 for out in (entry.get("outputs") or {}).values():
                     for im in (out.get("images") or []):
                         images.append(im)
+                if not images:
+                    images = _salvage_from_disk(run_id, item["index"])
+                    if images:
+                        log("run %s 第 %d 张：history 没给图，已从 ComfyUI output 目录捡回 %d 张"
+                            % (run_id, item["index"] + 1, len(images)))
+                    else:
+                        item["note"] = "no_image"
                 if images:
                     item["images"] = images
+                    last_progress = time.time()
                 item["exec_status"] = (entry.get("status") or {}).get("status_str")
                 item["status"] = "done"
             # 处理被「清空队列 / 中断」掉的项（提交后给 6 秒宽限期，避免误判）
@@ -605,6 +669,20 @@ async def track_run(app, run_id):
                 except Exception:
                     pass
             if all(it["status"] != "pending" for it in run["items"]):
+                break
+            now = time.time()
+            if now - last_progress > RUN_STALL_SEC and not warned:
+                warned = True
+                log("run %s 已经 %.0f 秒没有新图产出，继续等（上限 %.0f 秒）"
+                    % (run_id, now - last_progress, RUN_TIMEOUT_SEC))
+            if now - started > RUN_TIMEOUT_SEC:
+                stuck = [it for it in run["items"] if it["status"] == "pending"]
+                for it in stuck:
+                    it["status"] = "timeout"
+                    it["note"] = "timeout"
+                run["warning"] = ("超过 %d 秒仍未出图，已停止跟踪（看一眼 ComfyUI 队列，中断后重试）"
+                                  % RUN_TIMEOUT_SEC)
+                log("run %s 超时：还有 %d 张没出图，标记 timeout 后照常归档" % (run_id, len(stuck)))
                 break
             await asyncio.sleep(1.0)
         await archive_run(app, run)
@@ -662,6 +740,7 @@ def _run_public(run):
         items.append({
             "index": it["index"],
             "status": it["status"],
+            "note": it.get("note"),
             "seed": it.get("seed"),
             "files": [base + "/" + f for f in files],
             "live": live,
@@ -672,7 +751,7 @@ def _run_public(run):
         "series": run.get("series") or DEFAULT_SERIES,
         "series_dir": series_rel(run.get("series")),
         "positive": run["positive"], "count": run["count"], "queued": len(run["items"]),
-        "saved": run.get("saved"), "error": run.get("error"),
+        "saved": run.get("saved"), "error": run.get("error"), "warning": run.get("warning"),
         "done_count": sum(1 for it in run["items"] if it["status"] == "done"),
         "items": items,
     }
@@ -882,11 +961,28 @@ def _prune_empty_series(run_dir, out_root):
         log("系列已空，一并送回收站：%s" % parent)
 
 
-async def handle_delete(request):
-    """删除单张出图或整批出图 —— 送进 Windows 回收站，可还原。
+IMG_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
 
-    范围硬限制在 _internal/output/ 之内（比 reveal 更严）；
-    送回收站失败就报错不删。
+
+def _count_images(path):
+    """目录下有多少张图（删除前统计，给界面一个准确的数字）。"""
+    try:
+        return sum(1 for p in path.rglob("*") if p.is_file() and p.suffix.lower() in IMG_SUFFIXES)
+    except Exception:
+        return 0
+
+
+async def handle_delete(request):
+    """删除出图 —— 送进 Windows 回收站，可还原。
+
+    四种范围（body 里任选一种）：
+      {run_id, file}   删单张
+      {run_id}         删某个批次
+      {series}         删某个系列（该系列的全部批次）
+      {all: true}      删全部（_internal/output/ 下所有系列 / 批次）
+
+    安全约定一直不变：范围硬限制在 _internal/output/ 之内；任一批次在生成中就拒绝；
+    送回收站失败就报错不删（绝不退化成永久删除）。
     """
     try:
         body = await request.json()
@@ -895,17 +991,74 @@ async def handle_delete(request):
 
     run_id = (body.get("run_id") or "").strip()
     file_name = (body.get("file") or "").strip()
-    if not run_id:
-        return json_response({"ok": False, "error": "缺少 run_id"}, 400)
-    for v in (run_id, file_name):
+    series_name = (body.get("series") or "").strip()
+    all_scope = bool(body.get("all")) or (body.get("scope") == "all")
+    for v in (run_id, file_name, series_name):
         if any(c in v for c in ("/", "\\", "..", ":")):
             return json_response({"ok": False, "error": "参数不合法"}, 400)
+    if not (run_id or series_name or all_scope):
+        return json_response({"ok": False, "error": "缺少 run_id / series / all"}, 400)
 
+    out_root = abspath(PTH["output_dir"]).resolve()
+
+    # ---------------- 删全部（所有系列的所有批次） ----------------
+    if all_scope:
+        busy = [r["run_id"] for r in RUNS.values() if r.get("status") == "running"]
+        if busy:
+            return json_response({"ok": False,
+                                  "error": "还有批次在生成中（%s），请先中断再删" % busy[0]}, 409)
+        entries = sorted(out_root.iterdir()) if out_root.is_dir() else []
+        runs_n = len(RUNS)
+        files_n = sum(_count_images(p) for p in entries if p.is_dir())
+        failed = [p.name for p in entries if not _to_recycle_bin(p)]
+        if failed:
+            return json_response({"ok": False,
+                                  "error": "送回收站失败，为安全起见已停手：%s" % "、".join(failed)}, 500)
+        for rid in list(RUNS.keys()):
+            _drop_run(rid)
+        log("已删除全部（送回收站）：%d 个目录 / %d 张图 <- %s" % (len(entries), files_n, out_root))
+        return json_response({"ok": True, "deleted_runs": runs_n, "deleted_files": files_n,
+                              "removed_series": [p.name for p in entries if p.is_dir()]})
+
+    # ---------------- 删某个系列（该系列的全部批次） ----------------
+    if series_name:
+        matched = [r for r in RUNS.values() if (r.get("series") or DEFAULT_SERIES) == series_name]
+        series_dir = series_dir_of(matched[0].get("series")) if matched else None
+        if series_dir is None:
+            cand = out_root / series_name
+            if cand.is_dir():
+                series_dir = cand
+        if series_dir is None:
+            return json_response({"ok": False, "error": "找不到这个系列：%s" % series_name}, 404)
+        try:
+            series_dir = series_dir.resolve()
+        except Exception as exc:
+            return json_response({"ok": False, "error": "路径无效：%s" % exc}, 400)
+        if series_dir == out_root or out_root not in series_dir.parents:
+            return json_response({"ok": False, "error": "拒绝删除 output 目录之外的内容"}, 403)
+        busy = [r["run_id"] for r in matched if r.get("status") == "running"]
+        if busy:
+            return json_response({"ok": False,
+                                  "error": "这个系列还有批次在生成中（%s），请先中断再删" % busy[0]}, 409)
+        files_n = _count_images(series_dir)
+        run_ids = [r["run_id"] for r in matched]
+        if not _to_recycle_bin(series_dir):
+            return json_response({"ok": False, "error": "送回收站失败，为安全起见没有删除"}, 500)
+        for rid in run_ids:
+            _drop_run(rid)
+        # 目录已不在磁盘上的同系列记录也一起清掉，免得画廊里留下打不开的条目
+        for rid in [rid for rid, r in list(RUNS.items())
+                    if (r.get("series") or DEFAULT_SERIES) == series_name]:
+            _drop_run(rid)
+        log("已删除系列（送回收站）：%s（%d 批 / %d 张图）" % (series_dir, len(run_ids), files_n))
+        return json_response({"ok": True, "deleted_runs": len(run_ids), "deleted_files": files_n,
+                              "removed_series": [series_dir.name]})
+
+    # ---------------- 以下按批次 / 按单张（沿用原有行为） ----------------
     run = RUNS.get(run_id)
     if run and run.get("status") == "running":
         return json_response({"ok": False, "error": "这一批还在生成中，请先中断再删"}, 409)
 
-    out_root = abspath(PTH["output_dir"]).resolve()
     try:
         run_dir = _resolve_run_dir(out_root, run_id, run)
     except Exception as exc:
@@ -915,8 +1068,7 @@ async def handle_delete(request):
         return json_response({"ok": False, "error": "拒绝删除 output 目录之外的内容"}, 403)
 
     if not run_dir.is_dir():
-        RUNS.pop(run_id, None)
-        TASKS.pop(run_id, None)
+        _drop_run(run_id)
         return json_response({"ok": True, "deleted": 0, "removed_run": True,
                               "note": "目录已不存在，只清理了记录"})
 
@@ -938,8 +1090,7 @@ async def handle_delete(request):
             removed_run = not any(it.get("files") for it in run["items"])
 
         if removed_run:
-            RUNS.pop(run_id, None)
-            TASKS.pop(run_id, None)
+            _drop_run(run_id)
             if _to_recycle_bin(run_dir):
                 log("这一批已无图片，整批送回收站：%s" % run_dir)
             else:
@@ -952,8 +1103,7 @@ async def handle_delete(request):
     # ---------------- 删整批 ----------------
     if not _to_recycle_bin(run_dir):
         return json_response({"ok": False, "error": "送回收站失败，为安全起见没有删除"}, 500)
-    RUNS.pop(run_id, None)
-    TASKS.pop(run_id, None)
+    _drop_run(run_id)
     log("已删除整批（送回收站）：%s" % run_dir)
     _prune_empty_series(run_dir, out_root)
     return json_response({"ok": True, "deleted": -1, "removed_run": True})
