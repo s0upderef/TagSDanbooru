@@ -2340,7 +2340,9 @@
         let galleryLoaded = false;    // 画廊是否已经加载过（点过「刷新图片」或自己出过图）
         let gallerySyncing = false;   // 焦点同步防重入
         let currentSeries = null;
-        let currentRunId = ALL;
+        // 批次按「天」分组：一个 chip = 一天（这一天可能有多次出图），点开就是那天全部图。
+        // 原来一个 chip 是一次出图（时分秒），一天能冒出十几个，太碎。
+        let currentDay = ALL;
         let lbIndex = -1;
 
         function reveal(relPath, runId) {
@@ -2670,6 +2672,20 @@
             E.progressText.textContent = '再点一次就删掉这一批' + batchCountText(run) + '（进回收站，可还原）';
         }
 
+        // 批次卡按天分组后，「这一天」可能是好几个 run：逐个删（服务端接口是单 run 的）
+        function delDayNow(runs, el) {
+            const n = countImages(runs);
+            confirmIcon(el, async () => {
+                for (const r of runs) {
+                    if (!await doDelete(r.run_id, null, '这一天')) return;
+                }
+                E.progressText.textContent = '这一天的 ' + runs.length + ' 个批次（' + n
+                    + ' 张）已删除，已移入回收站，可还原';
+            });
+            E.progressText.textContent = '再点一次就删掉这一天的 ' + runs.length + ' 个批次（'
+                + n + ' 张）（进回收站，可还原）';
+        }
+
         // ↻ 用这张图的参数回填表单（**不动提示词**）——「保留构图，只改提示词」的最常用动作
         function reuseParams(it) {
             const p = it.params || {};
@@ -2802,6 +2818,21 @@
             return iso ? iso.replace('T', ' ').slice(5, 16) : '';
         }
 
+        /* ---- 批次按天分：2026-10-15 这种 key，以及「今天 / 昨天 / 日期」的显示 ---- */
+        function dayOf(r) { return String((r && r.created) || '').slice(0, 10); }
+
+        function fmtDay(iso) {
+            const d = String(iso || '').slice(0, 10);
+            if (!d) return '未知日期';
+            const pad = n => (n < 10 ? '0' + n : '' + n);
+            const ymd = dt => dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate());
+            const today = ymd(new Date());
+            const yest = ymd(new Date(Date.now() - 86400000));
+            if (d === today) return '今天 ' + d.slice(5);
+            if (d === yest) return '昨天 ' + d.slice(5);
+            return d;
+        }
+
         /* ---- 系列：同一流程的图收在一个文件夹里，一眼看出改了哪里、哪里变好 ---- */
         function seriesOf(r) { return r.series || '未归类'; }
 
@@ -2849,13 +2880,8 @@
 
         // 当前要显示什么：选中某一批 → 就那一批；选中「全部」→ 本系列所有图按时间正序拼起来，
         // 这样翻一遍就能看出这一路是怎么改好的
-        function currentView() {
-            const rs = runsOfSeries(currentSeries);
-            if (currentRunId && currentRunId !== ALL) {
-                const one = rs.filter(r => r.run_id === currentRunId)[0];
-                if (one) return one;
-                currentRunId = ALL;
-            }
+        // 把多批合成一个视图：按时间正序拼起来，翻一遍就能看出这一路是怎么改好的
+        function combinedView(rs) {
             const asc = rs.slice().sort((a, b) => String(a.created || '').localeCompare(String(b.created || '')));
             const items = [];
             asc.forEach(r => galleryItems(r).forEach(it => {
@@ -2863,6 +2889,17 @@
             }));
             return { run_id: ALL, series: currentSeries, combined: true, items: items,
                      created: asc.length ? asc[asc.length - 1].created : null };
+        }
+
+        // 当前要显示什么：选中某一天 → 那天所有批次的图；选中「全部」→ 本系列所有图
+        function currentView() {
+            const rs = runsOfSeries(currentSeries);
+            if (currentDay && currentDay !== ALL) {
+                const day = rs.filter(r => dayOf(r) === currentDay);
+                if (day.length) return combinedView(day);
+                currentDay = ALL;
+            }
+            return combinedView(rs);
         }
 
         function renderSeriesbar() {
@@ -2877,7 +2914,7 @@
                     currentSeries === n,
                     () => {
                         currentSeries = n;
-                        currentRunId = ALL;
+                        currentDay = ALL;
                         renderSeriesbar(); renderRunbar(); renderGallery(currentView());
                     },
                     (el) => delSeriesNow(n, el)));
@@ -2891,15 +2928,22 @@
             E.runbar.appendChild(chipButton(
                 '全部 · ' + countImages(rs) + '张',
                 '按时间正序看这个系列的全部图 —— 一眼看出改了哪里、哪里变好了',
-                currentRunId === ALL,
-                () => { currentRunId = ALL; renderRunbar(); renderGallery(currentView()); }));
-            rs.forEach(r => {
+                currentDay === ALL,
+                () => { currentDay = ALL; renderRunbar(); renderGallery(currentView()); }));
+
+            // 按「天」分：同一天多次出图合成一个 chip（不然一天十几个，看着累）
+            const days = [];
+            rs.forEach(r => { const d = dayOf(r); if (days.indexOf(d) === -1) days.push(d); });
+            days.forEach(d => {
+                const runs = rs.filter(r => dayOf(r) === d);
                 E.runbar.appendChild(chipButton(
-                    fmtTime(r.created) + ' · ' + galleryItems(r).length + '张',
-                    r.run_id + (r.positive ? ('\n' + r.positive) : '') + '\n点右边的垃圾桶可以删掉这一批',
-                    currentRunId === r.run_id,
-                    () => { currentRunId = r.run_id; renderRunbar(); renderGallery(r); },
-                    (el) => delRunNow(r, el)));
+                    fmtDay(d) + ' · ' + countImages(runs) + '张'
+                        + (runs.length > 1 ? '（' + runs.length + ' 批）' : ''),
+                    d + ' 这天的出图：' + runs.length + ' 个批次\n'
+                        + runs.map(r => r.run_id).join('\n') + '\n点右边的垃圾桶可以删掉这一整天',
+                    currentDay === d,
+                    () => { currentDay = d; renderRunbar(); renderGallery(currentView()); },
+                    (el) => delDayNow(runs, el)));
             });
         }
 
@@ -2924,11 +2968,13 @@
             if (names.indexOf(currentSeries) === -1) currentSeries = names[0];
             if (selectRun) {
                 const r = runById(selectRun);
-                if (r) currentSeries = seriesOf(r);      // 新出的图可能落在别的系列，跟着切过去
-                currentRunId = selectRun;
+                if (r) {
+                    currentSeries = seriesOf(r);      // 新出的图可能落在别的系列，跟着切过去
+                    currentDay = dayOf(r);            // 批次按天走：选中这一批所在的那一天
+                }
             }
             const rs = runsOfSeries(currentSeries);
-            if (currentRunId !== ALL && !rs.some(r => r.run_id === currentRunId)) currentRunId = ALL;
+            if (currentDay !== ALL && !rs.some(r => dayOf(r) === currentDay)) currentDay = ALL;
 
             renderSeriesbar();
             renderRunbar();
@@ -2956,9 +3002,15 @@
         window.addEventListener('focus', async () => {
             if (!galleryLoaded || gallerySyncing || pollTimer || busy) return;
             gallerySyncing = true;
-            try { await loadHistory(currentRunId === ALL ? null : currentRunId); }
+            try { await loadHistory(currentDay === ALL ? null : currentRunOfDay()); }
             finally { gallerySyncing = false; }
         });
+
+        // 当前选中的「这一天」里最新的一批（用于窗口聚焦时的增量刷新定位）
+        function currentRunOfDay() {
+            const rs = runsOfSeries(currentSeries).filter(r => dayOf(r) === currentDay);
+            return rs.length ? rs[0].run_id : null;
+        }
 
         /* ---------------- 出图与进度 ---------------- */
         function setBusy(state) {
@@ -3227,7 +3279,12 @@
         });
         E.reload.addEventListener('click', reloadGallery);
         E.openDir.addEventListener('click', () => {
-            if (currentRunId && currentRunId !== ALL) reveal(null, currentRunId);
+            if (currentDay && currentDay !== ALL) {
+                // 选中的是「某一天」：那天只有一个批次就打开那个批次，多个批次就打开系列目录
+                const runs = runsOfSeries(currentSeries).filter(r => dayOf(r) === currentDay);
+                if (runs.length === 1) reveal(null, runs[0].run_id);
+                else reveal(currentSeriesDir(), null);
+            }
             else if (currentSeries) reveal(currentSeriesDir(), null);
             else reveal(null, null);
         });
