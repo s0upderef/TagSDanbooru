@@ -1115,6 +1115,13 @@ ACTION_EXCLUDE = ("riding_crop", "riding_hood", "riding_boots", "riding_helmet",
                   "riding_breeches", "drinking_glass", "drinking_straw", "throwing_knife",
                   "holding_bow_(music)_instrument",
                   "biting_neck", "biting_ear")     # 这两个偏「性行为」，留在原桶
+# 嘴里叼东西 / 手脸互动：都是动作（含出血的另算，留在「面部」）
+MOUTH_GESTURE = ("_in_mouth", "_in_own_mouth", "finger_to_mouth", "fingers_to_mouth",
+                 "hand_to_own_mouth", "finger_to_another's_mouth", "covering_another's_mouth",
+                 "wiping_mouth", "mouth_hold", "teeth_hold", "cheek_pull", "cheek_squash",
+                 "cheek_rest", "facepalm", "faceplant", "rubbing_eyes", "scratching_cheek",
+                 "covering_one_eye", "covering_another's_eyes", "finger_to_eye", "horn_grab",
+                 "tongue_grab", "hair_grab", "surprised_arms")
 
 
 def action_hit(name):
@@ -1208,6 +1215,9 @@ def rejudge_person(name, zh):
         return "其他"
     if name.endswith("_(cosplay)"):            # 某个角色的 cosplay 图 -> 概念类
         return "其他"
+    # 嘴里叼着 / 手碰着脸：是「动作」，不是「面部」本身（出血类除外）
+    if "blood" not in (name or "") and any(k in (name or "") for k in MOUTH_GESTURE):
+        return "姿势动作"
     for k in PRIOR_UPPER:                     # 优先词：cape 不能被 cap 抢走
         if k in hay:
             return "上身衣装"
@@ -1450,6 +1460,55 @@ L2_FIX_EXACT = {
     "sweat_stain": ("人物", "体貌特征"),
     "libra_(symbol)": ("画面", "装饰"),
     "libra_(constellation)": ("背景", "自然景物"),
+    # 「面部」里混的：食物 / 物件 / 体毛 / 页面元词 / 人设词
+    "ramen": ("物件", "食物"),
+    "pasta": ("物件", "食物"),
+    "croissant": ("物件", "食物"),
+    "udon": ("物件", "食物"),
+    "yakisoba": ("物件", "食物"),
+    "spaghetti": ("物件", "食物"),
+    "noodles": ("物件", "食物"),
+    "crumbs": ("物件", "食物"),
+    "toothbrush": ("物件", "其他物件"),
+    "toothpaste": ("物件", "其他物件"),
+    "toothpick": ("物件", "其他物件"),
+    "horn_(instrument)": ("物件", "其他物件"),
+    "van": ("物件", "其他物件"),
+    "race_bib": ("人物", "配饰"),
+    "viewfinder": ("构图取景", "取景"),
+    "toenails": ("人物", "体貌特征"),
+    "sharp_toenails": ("人物", "体貌特征"),
+    "long_toenails": ("人物", "体貌特征"),
+    "hand_hair": ("人物", "体貌特征"),
+    "thick_arm_hair": ("人物", "体貌特征"),
+    "sparse_arm_hair": ("人物", "体貌特征"),
+    "thick_leg_hair": ("人物", "体貌特征"),
+    "sparse_leg_hair": ("人物", "体貌特征"),
+    "thick_navel_hair": ("人物", "体貌特征"),
+    "sparse_navel_hair": ("人物", "体貌特征"),
+    "alternate_body_hair": ("人物", "体貌特征"),
+    "chest_fur": ("人物", "体貌特征"),
+    "disembodied_eye": ("人物", "体貌特征"),
+    "forehead": ("人物", "体貌特征"),
+    "arrancar": ("人物", "类型"),
+    "sukeban": ("人物", "类型"),
+    "dark_persona": ("人物", "类型"),
+    "mob_face": ("人物", "类型"),
+    "troll_face": ("人物", "类型"),
+    "aegyo_sal": ("人物", "类型"),
+    "gloom_(expression)": ("人物", "其他"),
+    "gununu_(meme)": ("人物", "其他"),
+    "credits_page": ("元标签", "注释与来源"),
+    "interview": ("元标签", "注释与来源"),
+    "user_interface": ("元标签", "注释与来源"),
+    "expression_chart": ("元标签", "注释与来源"),
+    "autofacial": ("元标签", "注释与来源"),
+    "happy_facial": ("元标签", "注释与来源"),
+    "too_literal": ("元标签", "注释与来源"),
+    "?_block": ("元标签", "注释与来源"),
+    "rounded_corners": ("元标签", "注释与来源"),
+    "borderless_panels": ("元标签", "媒介"),
+    "numbered_panels": ("元标签", "媒介"),
 }
 L2_FIX_EXACT.update(BODY_TO_GEAR)                       # 体貌特征里混进来的装备/道具
 
