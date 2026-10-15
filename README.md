@@ -46,6 +46,12 @@
 - **分类体系**：只有两级 —— 每个词条各有一个一级、一个二级；划分按「长在哪 / 穿在哪」把同类词条收进同一个桶，避免同类项散在两处。画师 / 角色 / 作品名不铺分类。
 - 工具：`classify_tags.py`（分类 + 二级合并）、`audit_tags.py`（覆盖率体检）、`check_prompt.py`（写词前体检）、`page_smoke.py`（页面冒烟：真加载一次页面，查 JS 报错与数据是否加载）、`gen.py`（命令行出图）、`contact_sheet.py`（出图后拼检视图）。
 
+## 🛠 维护约定
+
+- **提交信息**：一律英文、措辞中性。不写露骨词或具体成人标签名，涉及这类内容时用 `adult` / `R18` 之类概括（例：`data: move some adult tags to the R18 level`）。
+- **改分类数据后**：重建缓存，再跑 `audit_tags.py --assert`（结构 + 覆盖率基线）和 `page_smoke.py`（真加载一次页面，查 JS 报错与数据加载）。
+- **改了哪些文件决定怎么生效**：只改 `TagSDanbooru.html` 不用重启（浏览器 Ctrl+F5）；改 `server.py` / `config.json` / `_internal/workflow*` 才需要重启服务。
+
 ## 📸 数据源
 
 [Danbooru](https://danbooru.donmai.us/) · [SD WebUI Tag Autocomplete](https://github.com/DominikDoom/a1111-sd-webui-tagcomplete) · [dbr-e621-lists-archive](https://github.com/DraconicDragon/dbr-e621-lists-archive)
