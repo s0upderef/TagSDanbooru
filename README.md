@@ -42,7 +42,7 @@
 - 来源：danbooru **2025-05-01** 快照，15 万行，随仓库附带 `_internal/data/tagsd_danbooru_zh.csv`。
 - **中文**：热度前 20,000 名 100% 补齐，长尾按批推进。
 - **分类**：12 个一级（人物 / 构图取景 / 背景 / 画面 / 物件 / 元标签 / 反向 / 内置分类-禁，加查询用的 kontext指令 / 角色 / 画师 / 作品），二级做过合并（最多 16 个）；画师 / 角色 / 作品名不铺分类。
-- 前 20k 实用词条已分类 **83%**，其余按热度逐批补，待办清单在 `_internal/dev/reports/unmatched_20000.txt`。
+- 前 20k 实用词条已分类 **84%**，其余按热度逐批补，待办清单在 `_internal/dev/reports/unmatched_20000.txt`。
 - 工具：`classify_tags.py`（分类 + 二级合并）、`audit_tags.py`（覆盖率体检）、`check_prompt.py`（写词前体检）、`gen.py`（命令行出图）、`contact_sheet.py`（出图后拼检视图）。
 
 ## 📸 数据源
