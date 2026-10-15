@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "ckpt_name": "illustriousXLV20.b8Gn.safetensors_.safetensors"
+      "ckpt_name": "your-checkpoint.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
