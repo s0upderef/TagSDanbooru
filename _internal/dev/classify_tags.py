@@ -138,6 +138,12 @@ MERGE = [
     ("构图取景", "特写", "构图取景", "镜头"),
     ("构图取景", "视线", "构图取景", "视角"),
     ("画面", "氛围", "背景", "氛围"),
+    # ---- 第三轮：对齐「Danbooru 标签超市」(tags.novelai.dev) 的叫法与归属 ----
+    ("人物", "物种", "人物", "类型"),              # 它家「类型」把种族/身份/数量都归一起
+    ("人物", "身份", "人物", "类型"),
+    ("构图取景", "镜头", "构图取景", "取景"),
+    ("构图取景", "半身", "构图取景", "取景"),
+    ("构图取景", "全身", "构图取景", "取景"),
 ]
 MERGE_MAP = {(a, b): (c, d) for a, b, c, d in MERGE}
 
@@ -1003,13 +1009,16 @@ def contains(name, words):
     return False
 
 
-# ---------------------------------------------------------------- 服装/配饰 再细分
-# 原本的「服装 / 配饰 / 汉服」是按来源分的，同一类东西（比如裙子和汉服裙子）会散在两边。
-# 这里改成按**穿在哪**分：上身 / 下身 / 全身 / 鞋袜 / 头部饰品 / 脖子 / 耳朵 / 配饰。
-# 命中顺序 = 优先级：先抓鞋袜/头/耳/颈，再抓明确的全身装，最后才是上/下身。
+# ---------------------------------------------------------------- 人物：按「穿在哪 / 长在哪」重判
+# 对齐「Danbooru 标签超市」(tags.novelai.dev) 的叫法与归属：
+#   · 全身性衣物 -> 「衣装」（它同名桶就是连衣裙/制服/和服/泳装）
+#   · 领带/领结/衣领/围巾/项链 -> 「脖子」（穿挂在脖子上）
+#   · 兽耳 + 耳饰 -> 「耳朵」；胸部相关 -> 「胸部」；眼镜/眼罩 -> 「头部饰品」
+#   · 创可贴/绷带/纹身/锁链/手铐 -> 「全身装饰」（它同名桶即这类零碎物）
+# 命中顺序 = 优先级：先抓鞋袜/头/耳/颈/身上的零碎，再抓明确的全身装，最后才是上/下身。
 # 优先词（最高优先）：这些词里含别的词表的子串，必须先判，否则会归错
 PRIOR_UPPER = ("连帽衫", "帽衫", "连帽卫衣", "兜帽", "hoodie", "hood", "cape", "capelet", "dress_shirt",
-               "sailor_collar", "披风", "斗篷", "披肩")
+               "披风", "斗篷", "披肩")
 L2_SHOES = ("boot", "shoe", "sandal", "sneaker", "loafer", "heel", "sock", "stocking", "thighhigh",
             "kneehigh", "pantyhose", "legwear", "garter", "鞋", "靴", "袜", "高跟", "凉鞋", "丝袜",
             "过膝袜", "长袜", "短袜", "网袜", "吊带袜", "拖鞋", "木屐")
@@ -1017,48 +1026,101 @@ L2_HEAD = ("hat", "cap", "helmet", "beret", "crown", "tiara", "hairband", "headb
            "hair_ornament", "hair_accessory", "hair_bow", "hair_flower", "hair_ribbon", "headpiece",
            "headgear", "scrunchie", "veil", "hachimaki", "tate_eboshi", "bonnet", "nightcap",
            "circlet", "eyewear_on_head", "帽", "头盔", "发饰", "头饰", "头环", "头巾", "面纱",
-           "发带", "发夹", "发绳", "发簪", "头戴", "王冠", "皇冠", "睡帽", "斗笠")
-L2_EAR = ("earring", "ear_ornament", "earclip", "ear_piercing", "耳环", "耳饰", "耳夹", "耳钉", "耳挂")
+           "发带", "发夹", "发绳", "发簪", "头戴", "王冠", "皇冠", "睡帽", "斗笠", "头绳", "bobble",
+           # 眼镜/眼罩一类（参考站归「头部饰品」）
+           "glasses", "sunglasses", "monocle", "eyepatch", "blindfold", "goggles", "eyewear", "visor",
+           "眼镜", "太阳镜", "眼罩", "护目镜", "墨镜")
+L2_EAR = ("earring", "ear_ornament", "earclip", "ear_piercing", "耳环", "耳饰", "耳夹", "耳钉", "耳挂",
+          # 兽耳（参考站把「自己的耳朵」和「耳朵上的东西」放同一桶）
+          "animal_ear", "cat_ear", "fox_ear", "dog_ear", "rabbit_ear", "wolf_ear", "horse_ear",
+          "mouse_ear", "bear_ear", "cow_ear", "deer_ear", "pointy_ear", "elf_ear", "kemonomimi",
+          "fake_animal_ear", "pointed_ear", "long_ear", "tiger_ear", "lion_ear", "panda_ear",
+          "sheep_ear", "squirrel_ear", "bat_ear", "raccoon_ear", "goat_ear", "ferret_ear",
+          "monkey_ear", "pig_ear", "兽耳", "猫耳", "狐耳", "狗耳", "兔耳", "尖耳", "耳朵上的")
+L2_NECK = ("choker", "necklace", "pendant", "collar_chain", "collar_pin", "tie_clip", "项链", "项圈",
+           "锁骨链", "领针", "颈饰", "颈圈", "围脖",
+           # 领/围类（参考站的「脖子」桶就是这个范围）
+           "necktie", "bowtie", "ascot", "jabot", "lanyard", "cravat", "bolo", "neckerchief", "scarf",
+           "muffler", "collar", "turtleneck", "v-neck", "halterneck", "lapels", "neck_ribbon",
+           "neck_bell", "around_neck", "领带", "领结", "领巾", "衣领", "领子", "领口", "高领", "V领",
+           "围巾", "颈部", "颈带", "颈铃")
+# 上面这些词命中时，如果整词其实是「衣服本体」，仍归上衣
+L2_NECK_BODY = ("shirt", "sweater", "vest", "jacket", "coat", "blouse", "dress", "apron", "hoodie",
+                "jumper", "衬衫", "衬衣", "毛衣", "外套", "夹克", "连衣裙", "上衣", "卫衣", "马甲")
+L2_BREAST = ("breast", "nipple", "areola", "cleavage", "underboob", "sideboob", "pectoral", "pecs",
+             "flat_chest", "chest_hair", "乳沟", "乳房", "乳头", "乳首", "胸肌", "胸部", "胸毛",
+             "南半球", "欧派")
+L2_BODY_DECO = ("tattoo", "bandaid", "bandage", "plaster", "shackle", "handcuff", "ball_and_chain",
+                "leash", "shibari", "rope", "bound", "binding", "restraint", "straitjacket", "gag",
+                "buttons", "chain", "纹身", "创可贴", "绷带", "纱布", "手铐", "镣铐", "锁链", "链条",
+                "束缚", "捆绑", "绑缚", "绳缚", "纽扣")
 L2_WAIST = ("belt", "sash", "waistband", "腰带", "腰封", "束腰", "皮带")
-# 会被「按穿着部位重判」的二级（含旧桶）
-CLOTH_L2 = ("服装", "配饰", "汉服", "上身装饰", "下身装饰", "全身装饰", "鞋袜", "头部饰品", "脖子", "耳朵")
+# 会被「按穿着部位重判」的二级（含旧桶）；体貌/面部/头发里也混着耳饰、兽耳、纹身这类
+CLOTH_L2 = ("服装", "配饰", "汉服", "上身装饰", "下身装饰", "衣装", "全身装饰", "鞋袜", "头部饰品",
+            "脖子", "耳朵", "胸部")
+REJUDGE_L2 = CLOTH_L2 + ("体貌特征", "面部", "头发")
 # danbooru 的「概念 / meta」标签：说的不是具体穿在哪，归「其他」
 L2_PERSON_META = ("alternate_costume", "official_alternate_costume", "cosplay", "undressing",
                   "clothes_removed", "no_clothes", "partially_undressed")
-L2_NECK = ("choker", "necklace", "pendant", "collar_chain", "collar_pin", "tie_clip", "项链", "项圈",
-           "锁骨链", "领针", "颈饰", "颈圈", "围脖")
 L2_FULL = ("dress", "kimono", "yukata", "robe", "gown", "swimsuit", "bikini", "leotard", "bodysuit",
            "uniform", "sailor", "maid", "serafuku", "pajamas", "jumpsuit", "wedding",
            "chinese_clothes", "japanese_clothes", "dougi", "playboy_bunny", "hanfu", "overalls",
-           "raincoat", "poncho", "连衣裙", "襦裙", "和服", "浴衣", "泳衣", "比基尼", "婚纱", "礼服",
+           "raincoat", "poncho", "bikesuit", "连衣裙", "襦裙", "和服", "浴衣", "泳衣", "比基尼", "婚纱", "礼服",
            "旗袍", "汉服", "唐装", "制服", "校服", "道服", "战袍", "睡衣", "兔女郎", "女仆", "连体",
            "铠甲", "胸甲", "雨衣", "巫女服", "丧服", "圣诞装", "工装裤")
 L2_LOWER = ("skirt", "pants", "shorts", "jeans", "bloomers", "hakama", "harem_pants", "裙", "裤",
             "百褶裙", "褶裙", "迷你裙", "内裤", "短裤", "牛仔裤", "灯笼裤", "围裙", "裙子")
 L2_UPPER = ("shirt", "sweater", "hoodie", "jacket", "coat", "blazer", "cardigan", "vest", "tank_top",
-            "camisole", "crop_top", "blouse", "t-shirt", "apron", "necktie", "bowtie", "scarf",
-            "collar", "sleeve", "bra", "corset", "suspenders", "cape", "cloak", "shawl", "suit",
+            "camisole", "crop_top", "blouse", "t-shirt", "apron", "sleeve", "bra", "corset",
+            "suspenders", "shawl", "suit",
             "上衣", "衬衫", "衬衣", "毛衣", "卫衣", "背心", "外套", "夹克", "大衣", "风衣", "短袖",
-            "长袖", "无袖", "胸罩", "内衣", "领带", "领结", "围巾", "袖子", "翻领", "开衫", "马甲",
-            "抹胸", "胸衣", "斗篷", "披风", "披肩", "背带",
+            "长袖", "无袖", "胸罩", "内衣", "袖子", "翻领", "开衫", "马甲", "抹胸", "胸衣", "背带",
             # 汉服单品（按穿在哪归位，不再单独一个「汉服」桶）
-            "上衫", "短衫", "长衫", "宋抹", "披帛", "霞帔", "领子")
+            "上衫", "短衫", "长衫", "宋抹", "披帛", "霞帔")
 
 
-def split_person_cloth(name, zh):
-    """给 人物·服装 / 配饰 / 汉服 的行按「穿在哪」定二级；None = 没认出（调用方决定兜底）。"""
+def _neck_hit(hay):
+    """领/颈类命中：但如果整词是「衣服本体」（衬衫/毛衣…），仍算上衣。"""
+    if any(k in hay for k in L2_NECK_BODY):
+        return False
+    return any(k in hay for k in L2_NECK)
+
+
+def _body_deco_hit(hay):
+    """身上的零碎/束缚物；项链里的 chain 不算（那是「脖子」）"""
+    if any(x in hay for x in ("chain_necklace", "necklace", "choker", "pendant", "collar")):
+        return any(k in hay for k in L2_BODY_DECO if k != "chain")
+    return any(k in hay for k in L2_BODY_DECO)
+
+
+def rejudge_person(name, zh):
+    """人物下「穿 / 戴 / 长在身上」的行统一重判；返回二级，None = 保持原样。"""
     hay = (name or "").lower() + " " + (zh or "")
-    # 优先词：避免被其它词表截断误判（cape 不能命中 cap，连帽衫不能命中「帽」，
-    # dress_shirt 不能命中 dress，belt_collar 要靠「脖子」但 belt 要归配饰）
-    for k in PRIOR_UPPER:
+    if name in L2_PERSON_META:
+        return "其他"
+    for k in PRIOR_UPPER:                     # 优先词：cape 不能被 cap 抢走
         if k in hay:
             return "上身装饰"
-    for l2, keys in (("鞋袜", L2_SHOES), ("头部饰品", L2_HEAD), ("耳朵", L2_EAR), ("脖子", L2_NECK),
-                     ("配饰", L2_WAIST), ("全身装饰", L2_FULL), ("下身装饰", L2_LOWER),
-                     ("上身装饰", L2_UPPER)):
-        for k in keys:
-            if k in hay:
-                return l2
+    if any(k in hay for k in L2_SHOES):
+        return "鞋袜"
+    if any(k in hay for k in L2_HEAD):
+        return "头部饰品"
+    if any(k in hay for k in L2_EAR):
+        return "耳朵"
+    if _body_deco_hit(hay):                   # 纹身/创可贴/束缚 先于「部位」
+        return "全身装饰"
+    if _neck_hit(hay):
+        return "脖子"
+    if any(k in hay for k in L2_BREAST):
+        return "胸部"
+    if any(k in hay for k in L2_WAIST):
+        return "配饰"
+    if any(k in hay for k in L2_FULL):
+        return "衣装"
+    if any(k in hay for k in L2_LOWER):
+        return "下身装饰"
+    if any(k in hay.replace("braid", "") for k in L2_UPPER):   # braid（辫子）不是 bra
+        return "上身装饰"
     return None
 
 
@@ -1093,6 +1155,118 @@ def split_item(name, zh):
             if k in hay:
                 return l2
     return None
+
+
+# ---------------------------------------------------------------- 构图取景（对齐参考站的「摆位 / 视角」）
+# 参考站把「动作」和「摆位（朝向、视线）」分开，构图取景里混进来的动作词要送回人物。
+FRAME_EXACT = {
+    "bikesuit": ("人物", "衣装"), "topless_female": ("人物", "上身装饰"),
+    "bandaged_torso": ("人物", "全身装饰"), "halfling": ("人物", "类型"),
+    "mini_person": ("人物", "类型"), "chibikemo": ("人物", "类型"), "sheet_ghost": ("人物", "类型"),
+    "skull_head": ("人物", "类型"), "fly": ("人物", "类型"),
+    "chest_hair_peek": ("人物", "胸部"),
+}
+FRAME_TO_POSE = ("holding", "hold_", "hug", "carry", "carrying", "walk", "run", "riding", "straddl",
+                 "kneel", "crouch", "jump", "danc", "salute", "waving", "grabbing", "patting",
+                 "kissing", "kiss", "lick", "smell", "stretch", "pray", "meditat", "tiptoe",
+                 "peace_symbol", "middle_finger", "hand_on_hip", "hands_on_hips", "outstretched",
+                 "spread_arms", "bent_over", "leaning", "reaching", "adjusting", "fighting_stance",
+                 "arm_support", "sit", "stand", "lying", "lie_", "biting", "fingering", "arm_hug",
+                 "crossed_arms", "cheek-to-cheek", "against_wall", "midair")
+FRAME_TO_BODY = ("forearms", "calves", "back_muscles", "arm_fins", "animal_legs", "very_hairy",
+                 "armpit_hair", "sweaty_armpits", "smelly_armpits")
+FRAME_VIEW = ("full_body", "full-body", "upper_body", "lower_body", "portrait", "close-up", "closeup",
+              "cowboy_shot", "fisheye", "wide_shot", "out_of_frame", "cropped", "focus", "zoom",
+              "全身", "上半身", "下半身", "半身像", "特写", "出框")
+FRAME_STANCE = ("facing", "profile", "from_behind", "from_side", "looking", "staring", "glance",
+                "three_quarter", "selfie", "背对", "侧脸", "正脸", "看向", "视线", "回眸", "凝视")
+FRAME_ANGLE = ("pov", "viewer", "dutch_angle", "from_above", "from_below", "aerial", "bird", "worm",
+               "angle", "upside-down", "panoramic", "eye level", "top-down", "ground view",
+               "side view", "俯视", "仰视", "视角", "视点")
+
+
+def split_framing(name, zh):
+    """构图取景的二级：取景 / 摆位 / 视角 / 构图；顺手把误收的动作、身体特征送回「人物」。"""
+    n = (name or "").lower()
+    hay = n + " " + (zh or "")
+    if n in FRAME_EXACT:
+        return FRAME_EXACT[n]
+    for k in FRAME_TO_POSE:
+        if k in n:
+            return ("人物", "姿势动作")
+    for k in FRAME_TO_BODY:
+        if k in n:
+            return ("人物", "体貌特征")
+    for k in FRAME_VIEW:
+        if k in hay:
+            return ("构图取景", "取景")
+    for k in FRAME_STANCE:
+        if k in hay:
+            return ("构图取景", "摆位")
+    for k in FRAME_ANGLE:
+        if k in hay:
+            return ("构图取景", "视角")
+    return ("构图取景", "构图")
+
+
+# ---------------------------------------------------------------- 画面·艺术风格（风格 / 类型 / 元标签）
+# 参考站的「类型」独立成桶：elf / fairy / vampire 这些不是画风；约稿图、水印、套图属于元信息。
+STYLE_TO_META = ("variant_set", "commission", "watermark", "copyright_notice", "self-upload",
+                 "self-portrait", "artist_collaboration", "hard-translated", "translated",
+                 "corrupted_twitter_file", "hashtag-only_commentary", "anime_screenshot", "album_cover",
+                 "commentary", "4koma", "3koma", "screenshot", "cover_art", "cover_page")
+STYLE_TO_TYPE = ("elf", "fairy", "vampire", "mermaid", "witch", "ninja", "knight", "bara", "furry",
+                 "magical_girl", "giantess", "kemonomimi", "monster_girl", "dragon_girl")
+STYLE_SAFE = ("self", "shelf")            # 别让 self-upload 被 elf 抢走
+
+
+def split_style(name, zh):
+    """画面·艺术风格 里混进来的「类型」「元标签」各自归位；其余仍是艺术风格。"""
+    hay = (name or "").lower() + " " + (zh or "")
+    if any(k in hay for k in STYLE_SAFE):
+        return ("画面", "艺术风格")
+    for k in STYLE_TO_META:
+        if k in hay:
+            return ("元标签", "媒介")
+    for k in STYLE_TO_TYPE:
+        if k in hay:
+            return ("人物", "类型")
+    return ("画面", "艺术风格")
+
+
+def merge_l2(l1, l2):
+    """查「旧桶 -> 新桶」合并表；返回 (一级, 二级)。"""
+    new = MERGE_MAP.get((l1, (l2 or "").strip()))
+    return new if new else (l1, (l2 or "").strip())
+
+
+def rejudge(l1, l2, name, zh):
+    """按当前词表重判一行；返回 (一级, 二级)（允许与原值相同）。"""
+    l2 = (l2 or "").strip()
+    if l1 == "人物" and l2 in REJUDGE_L2:
+        sub = rejudge_person(name, zh)
+        if sub:
+            return (l1, sub)
+        if l2 == "服装":                       # 旧桶兜底（早已不存在，留着防呆）
+            return (l1, "上身装饰")
+        if l2 == "汉服":
+            return (l1, "衣装")
+        if l2 == "全身装饰":                    # 旧「全身装饰」= 连衣裙/制服 这类全身性衣物
+            return (l1, "衣装")
+        return (l1, l2)
+    if l1 == "物件":
+        return (l1, split_item(name, zh) or "其他物件")
+    if l1 == "构图取景":
+        return split_framing(name, zh)
+    if l1 == "画面" and l2 == "艺术风格":
+        return split_style(name, zh)
+    return (l1, l2)
+
+
+def settle(l1, l2, name, zh):
+    """先合并旧桶、再按词表重判：新分类和存量数据都走这一条路，保证一步到位。"""
+    a = merge_l2(l1, l2)
+    return rejudge(a[0], a[1], name, zh)
 
 
 def classify(name, cat, zh=""):
@@ -1212,7 +1386,7 @@ def main():
     order = sorted(range(len(rows)), key=lambda i: -heat(rows[i]))
     rank = {i: k + 1 for k, i in enumerate(order)}
 
-    merged = filled = skipped = split_n = item_n = 0
+    merged = moved = filled = skipped = 0
     stat = collections.Counter()
     unmatched = []
     for i in range(len(rows)):
@@ -1226,40 +1400,14 @@ def main():
             stat[("内置分类-禁", "R18")] += 1
             continue
         if l1:
-            new = MERGE_MAP.get((l1, l2))
-            if new and new != (l1, l2):
-                r[5], r[6] = new
+            cur = (l1, l2)
+            mg = merge_l2(cur[0], cur[1])
+            if mg != cur:
                 merged += 1
-            # 人物·服装 / 配饰 / 汉服 按「穿在哪」细分；已分过的桶也重判一次（改词表能自动纠错）
-            cur = (r[6] or "").strip()
-            if r[5] == "人物" and cur in CLOTH_L2:
-                if r[0] in L2_PERSON_META and cur != "其他":
-                    r[6] = "其他"
-                    split_n += 1
-                else:
-                    sub = split_person_cloth(r[0], r[4] if len(r) > 4 else "")
-                    if sub:
-                        if sub != cur:
-                            r[6] = sub
-                            split_n += 1
-                    elif cur == "服装":
-                        r[6] = "上身装饰"
-                        split_n += 1
-                    elif cur == "汉服":
-                        r[6] = "全身装饰"
-                        split_n += 1
-            # 历史遗留回补：早期把「耳朵」并进了「体貌特征」，耳饰这类要回到「耳朵」
-            elif r[5] == "人物" and cur == "体貌特征":
-                hay = (r[0] or "").lower() + " " + (r[4] if len(r) > 4 else "")
-                if any(k in hay for k in L2_EAR):
-                    r[6] = "耳朵"
-                    split_n += 1
-            # 物件：空二级 -> 武器 / 食物 / 植物花卉 / 家具与家居 / 其他物件
-            elif r[5] == "物件":
-                sub = split_item(r[0], r[4] if len(r) > 4 else "") or "其他物件"
-                if cur != sub:
-                    r[6] = sub
-                    item_n += 1
+            nm = rejudge(mg[0], mg[1], r[0], r[4] if len(r) > 4 else "")
+            if nm != mg:
+                moved += 1
+            r[5], r[6] = nm
             stat[(r[5], (r[6] or "").strip())] += 1
             continue
         if merge_only or rank[i] > limit:
@@ -1271,13 +1419,13 @@ def main():
             else:
                 unmatched.append(i)
             continue
+        got = settle(got[0], got[1], r[0], r[4])   # 新分类也立刻归一，不用等下一轮
         r[5], r[6] = got
         filled += 1
         stat[(got[0], got[1])] += 1
 
     print("二级合并（重写旧桶）:", merged, "行")
-    print("服装/配饰按穿着部位细分:", split_n, "行")
-    print("物件细分:", item_n, "行")
+    print("按新词表重判并搬家:", moved, "行")
     print("规则分类（本次填补）:", filled, "行（热度前 %d 名）" % limit)
     print("垫底类（画师/角色/作品）跳过:", skipped, "行")
     print("规则没认出的:", len(unmatched), "行")
