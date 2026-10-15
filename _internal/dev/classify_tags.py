@@ -1034,13 +1034,18 @@ def contains(name, words):
 PRIOR_UPPER = ("连帽衫", "帽衫", "连帽卫衣", "兜帽", "hoodie", "hood", "cape", "capelet", "dress_shirt",
                "披风", "斗篷", "披肩")
 L2_SHOES = ("boot", "shoe", "sandal", "sneaker", "loafer", "heel", "sock", "stocking", "thighhigh",
-            "kneehigh", "pantyhose", "legwear", "garter", "鞋", "靴", "袜", "高跟", "凉鞋", "丝袜",
+            "kneehigh", "pantyhose", "legwear", "garter", "flip-flop", "ice_skate", "leg_warmer",
+            "鞋", "靴", "袜", "高跟", "凉鞋", "丝袜",
             "过膝袜", "长袜", "短袜", "网袜", "吊带袜", "拖鞋", "木屐")
 L2_HEAD = ("hat", "cap", "helmet", "beret", "crown", "tiara", "hairband", "headband",
            "hair_ornament", "hair_accessory", "hair_bow", "hair_flower", "hair_ribbon", "headpiece",
            "headgear", "scrunchie", "veil", "hachimaki", "tate_eboshi", "bonnet", "nightcap",
            "circlet", "eyewear_on_head", "halo", "帽", "头盔", "发饰", "头饰", "头环", "头巾", "面纱",
            "发带", "发夹", "发绳", "发簪", "头戴", "王冠", "皇冠", "睡帽", "斗笠", "头绳", "bobble", "光环",
+           # 耳机 / 发簪 / 头面部小饰品（原来落在「配饰」）
+           "headphone", "headset", "earphone", "earbud", "earpiece", "hairpods", "_on_head",
+           "hairpin", "hair_stick", "motoyui", "earmuffs", "forehead_jewel", "huadian",
+           "face_jewel", "jewel_under_eye", "ear_flower", "ear_bell",
            # 眼镜/眼罩一类（参考站归「头部配饰」）
            "glasses", "sunglasses", "monocle", "eyepatch", "blindfold", "goggles", "eyewear", "visor",
            "眼镜", "太阳镜", "眼罩", "护目镜", "墨镜")
@@ -1096,7 +1101,7 @@ BODY_TO_POSE_EXACT = ("m_legs", "v_legs", "v_arms")
 ACTION_PREFIX = ("holding_", "carrying_", "kissing_", "licking_", "grabbing_", "touching_", "pressing_",
                  "pulling_", "pushing_", "throwing_", "eating_", "drinking_", "smelling_", "sniffing_",
                  "hugging_", "sitting_on_", "standing_on_", "lying_on_", "leaning_on_", "lifting_",
-                 "riding_")
+                 "riding_", "adjusting_", "putting_on_", "applying_")
 # 「riding crop / riding hood」这类名字里有动作词的"物件/服装"，别误伤
 ACTION_EXCLUDE = ("riding_crop", "riding_hood", "riding_boots", "riding_helmet", "riding_gloves",
                   "riding_breeches", "drinking_glass", "drinking_straw", "throwing_knife",
@@ -1140,7 +1145,7 @@ BODY_TO_GEAR = {
     "dualshock": ("物件", "其他物件"),
     "handrail": ("物件", "家具与家居"),
 }
-L2_WAIST = ("belt", "sash", "waistband", "腰带", "腰封", "束腰", "皮带")
+L2_WAIST = ("belt", "sash", "waistband", "腰带", "腰封", "皮带")   # 注意：别放「束腰」，会把「束腰胸衣」这类衣物截走
 # 会被「按穿着部位重判」的二级（含旧桶）；体貌/面部/头发里也混着耳饰、兽耳、纹身这类
 CLOTH_L2 = ("服装", "配饰", "汉服", "上身衣装", "下身衣装", "全身衣装", "束缚具", "鞋袜", "头部配饰",
             "脖子", "耳朵", "胸部")
@@ -1401,6 +1406,30 @@ L2_FIX_EXACT = {
     "european_architecture": ("背景", "场景"),          # 含 rope，被当成绳缚了
     "male-female_symbol": ("画面", "装饰"),             # ♂♀ 符号，不是「几个人」
     "riding_crop": ("物件", "其他物件"),                # 马鞭，是物件不是「类型」
+    # 「配饰」里混的物件 / 身体部位 / 作品（点名纠正）
+    "beach_towel": ("物件", "其他物件"),
+    "crutch": ("物件", "其他物件"),
+    "randoseru": ("物件", "其他物件"),
+    "ring_box": ("物件", "其他物件"),
+    "makeup_brush": ("物件", "其他物件"),
+    "bell_pepper": ("物件", "食物"),
+    "pon_de_ring": ("物件", "食物"),
+    "boxing_ring": ("背景", "场景"),
+    "wrestling_ring": ("背景", "场景"),
+    "bow_(weapon)": ("物件", "武器"),
+    "yumi_(bow)": ("物件", "武器"),
+    "shakujou": ("物件", "武器"),
+    "mechanical_legs": ("人物", "体貌特征"),
+    "doll_joints": ("人物", "体貌特征"),
+    "vision_(genshin_impact)": ("物件", "其他物件"),     # 神之眼，是道具不是角色
+    "judgement_armband_(toaru)": ("人物", "配饰"),       # 臂章
+    "moriya's_iron_rings": ("物件", "其他物件"),         # 铁轮道具
+    "belt_bra": ("人物", "上身衣装"),                   # 束带胸罩是衣物（belt 别抢）
+    "mask_pull": ("人物", "姿势动作"),
+    "mask_lift": ("人物", "姿势动作"),
+    "glove_pull": ("人物", "姿势动作"),
+    "drawing_bow": ("人物", "姿势动作"),
+    "headphones_removed": ("人物", "姿势动作"),
 }
 L2_FIX_EXACT.update(BODY_TO_GEAR)                       # 体貌特征里混进来的装备/道具
 
