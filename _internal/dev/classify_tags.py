@@ -1074,8 +1074,14 @@ L2_MARK = ("tattoo", "bandaid", "bandage", "plaster", "纹身", "创可贴", "�
 L2_RESTRAINT = ("handcuff", "shackle", "ball_and_chain", "leash", "shibari", "rope", "bound", "binding",
                 "restraint", "straitjacket", "gag", "chained", "chains", "chain_hook", "手铐", "镣铐",
                 "锁链", "铁链", "链条", "束缚", "捆绑", "绑缚", "绳缚", "绳索", "口塞")
-# 这些词里的 cuff / chain / rope 不是束缚具：袖口、腰链、europe（含 rope）
+# 这些词里的 cuff / chain / rope 不是束缚类：袖口、腰链、europe（含 rope）
 L2_RESTRAINT_SKIP = ("wrist_cuff", "sleeve_cuff", "cufflink", "wristband", "saucer", "europe")
+# 「束缚具」桶已解散：按这三组分流（顺序 SEX -> POSE -> 其余算道具）
+RESTRAINT_SEX = ("shibari", "bondage", "bdsm", "hogtie", "gag", "绳缚", "口塞", "捆绑")
+RESTRAINT_POSE = ("bound", "binding", "chained", "chains", "restraint", "straitjacket", "tied",
+                  "wrapped_up", "束缚", "绑缚")
+RESTRAINT_DEVICE = ("handcuff", "shackle", "manacle", "harness", "spreader_bar", "rope", "chain",
+                    "ball_and_chain", "leash", "hook", "手铐", "镣铐", "锁链", "铁链", "链条", "绳索")
 # 这几个是「袖口/臂环/腰链」一类饰品，明确归配饰
 L2_ACC_EXACT = ("cuffs", "ankle_cuffs", "arm_cuffs", "leg_cuffs", "thigh_cuffs", "buttoned_cuffs",
                 "frilled_cuffs", "fur_cuffs", "belt_cuffs", "belly_chain", "belt_chain", "rope_belt",
@@ -1166,7 +1172,7 @@ BODY_TO_GEAR = {
 }
 L2_WAIST = ("belt", "sash", "waistband", "腰带", "腰封", "皮带")   # 注意：别放「束腰」，会把「束腰胸衣」这类衣物截走
 # 会被「按穿着部位重判」的二级（含旧桶）；体貌/面部/头发里也混着耳饰、兽耳、纹身这类
-CLOTH_L2 = ("服装", "配饰", "汉服", "上身衣装", "下身衣装", "全身衣装", "束缚具", "鞋袜", "头部配饰",
+CLOTH_L2 = ("服装", "配饰", "汉服", "上身衣装", "下身衣装", "全身衣装", "鞋袜", "头部配饰",
             "脖子", "耳朵", "胸部")
 REJUDGE_L2 = CLOTH_L2 + ("体貌特征", "面部", "头发", "其他", "对象与数量")
 # danbooru 的「概念 / meta」标签：说的不是具体穿在哪，归「其他」
@@ -1203,12 +1209,29 @@ def _mark_hit(hay):
 
 
 def _restraint_hit(hay):
-    """手铐 / 锁链 / 绳缚 / 口塞：归「束缚具」；项链里的 chain、袖口里的 cuff 不算"""
+    """手铐 / 锁链 / 绳缚 / 口塞 这类束缚词；项链里的 chain、袖口里的 cuff 不算"""
     if any(x in hay for x in L2_RESTRAINT_SKIP):
         return False
     if any(x in hay for x in ("chain_necklace", "necklace", "choker", "pendant", "collar")):
         return any(k in hay for k in L2_RESTRAINT if k != "chain")
     return any(k in hay for k in L2_RESTRAINT)
+
+
+def rejudge_restraint(name, zh):
+    """「束缚具」桶已解散：绳缚/口塞 -> 性行为；绑缚状态 -> 姿势动作；手铐镣铐等道具 -> 配饰。"""
+    n = (name or "").lower()
+    hay = n + " " + (zh or "")
+    if any(k in n for k in RESTRAINT_SEX):        # 名字里直接写着绳缚 / 口塞
+        return "性行为"
+    if any(k in n for k in RESTRAINT_POSE):       # 名字里直接写着被绑住 / 拴住
+        return "姿势动作"
+    if any(k in n for k in RESTRAINT_DEVICE):     # 名字里是手铐 / 镣铐 / 拘束带这类道具
+        return "配饰"
+    if any(k in hay for k in RESTRAINT_SEX):      # 再看中文释义
+        return "性行为"
+    if any(k in hay for k in RESTRAINT_POSE):
+        return "姿势动作"
+    return "配饰"
 
 
 def rejudge_person(name, zh):
@@ -1234,7 +1257,7 @@ def rejudge_person(name, zh):
         return "头部配饰"
     if any(k in hay for k in L2_EAR):
         return "耳朵"
-    if name in L2_ACC_EXACT:                  # 袖口/臂环/腰链：配饰，不是束缚具
+    if name in L2_ACC_EXACT:                  # 袖口/臂环/腰链：配饰，不是束缚类
         return "配饰"
     if any(k in hay for k in BODY_TO_POSE):    # 体貌特征里混进来的手/臂/腿动作
         return "姿势动作"
@@ -1246,8 +1269,8 @@ def rejudge_person(name, zh):
         return "体貌特征"
     if _mark_hit(hay):                        # 纹身/创可贴/绷带 = 身上的痕迹
         return "体貌特征"
-    if _restraint_hit(hay):                   # 身上的束缚具
-        return "束缚具"
+    if _restraint_hit(hay):                   # 束缚类词：按道具/状态/绳缚分流
+        return rejudge_restraint(name, zh)
     if _neck_hit(hay):
         return "脖子"
     if any(k in hay for k in L2_BREAST):
@@ -1520,8 +1543,8 @@ L2_FIX_EXACT = {
     "bar_censor": ("限制级", "R18"),
     "hair_censor": ("限制级", "R18"),
     "missionary": ("人物", "性行为"),
-    "harness": ("人物", "束缚具"),
-    "bit_gag": ("人物", "束缚具"),
+    "harness": ("人物", "配饰"),                    # 「束缚具」已解散：道具进配饰
+    "bit_gag": ("人物", "性行为"),                  # 口塞进性行为
     "tunic": ("人物", "上身衣装"),
     "waistcoat": ("人物", "上身衣装"),
     "white_bloomers": ("人物", "下身衣装"),
@@ -1714,8 +1737,8 @@ L2_FIX_EXACT = {
     "tucked_money": ("人物", "姿势动作"),
     "on_crescent": ("人物", "姿势动作"),
     "stance_(vehicle)": ("人物", "姿势动作"),
-    "wrapped_up": ("人物", "束缚具"),
-    "chained": ("人物", "束缚具"),
+    "wrapped_up": ("人物", "姿势动作"),
+    "chained": ("人物", "姿势动作"),
     "fire": ("画面", "装饰"),
     "blue_fire": ("画面", "装饰"),
     "pink_fire": ("画面", "装饰"),
@@ -1826,7 +1849,7 @@ L2_FIX_EXACT = {
     "pillow_grab": ("人物", "姿势动作"),
     "invisible_chair": ("人物", "姿势动作"),
     "lap_pillow_invitation": ("人物", "姿势动作"),
-    "tied_to_chair": ("人物", "束缚具"),
+    "tied_to_chair": ("人物", "姿势动作"),
     "tablet_pc": ("物件", "其他物件"),
     "table_tennis_paddle": ("物件", "其他物件"),
     "corrugated_galvanized_iron_sheet": ("物件", "其他物件"),
@@ -2292,6 +2315,9 @@ def rejudge(l1, l2, name, zh):
         return L2_FIX_EXACT[name]
     l2 = (l2 or "").strip()
     # 动作词优先：拿着/亲着/舔着某个东西 -> 是动作，不是那个东西
+    # 「束缚具」旧桶已解散：绳缚/口塞 -> 性行为、绑缚状态 -> 姿势动作、道具 -> 配饰
+    if l1 == "人物" and l2 == "束缚具":
+        return ("人物", rejudge_restraint(name, zh))
     if l1 in ("人物", "物件", "背景") and action_hit(name):
         return ("人物", "姿势动作")
     # 「背景」里挂在 on_/in_/against_/under_ 上的词，说的都是人待在哪儿 -> 姿势动作
