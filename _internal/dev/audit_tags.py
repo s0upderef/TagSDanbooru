@@ -8,16 +8,18 @@
 import collections
 import csv
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CSV = os.path.join(ROOT, "_internal", "data", "tagsd_danbooru_zh.csv")
+HTML = os.path.join(ROOT, "TagSDanbooru.html")
 BANDS = [(0, 5000, "前5000"), (5000, 10000, "5k-10k"), (10000, 20000, "10k-20k"),
          (20000, 50000, "20k-50k"), (50000, 10 ** 9, "50k+")]
 # 画师 / 作品 / 角色（danbooru category 1/3/4）：按约定不铺分类，不算缺口
 NOT_USEFUL = ("1", "3", "4")
 # 这些一级本来就不设二级（只按一级筛），"缺二级"不算问题
-NO_L2 = ("物件", "角色", "画师", "作品")
+NO_L2 = ("角色", "画师", "作品")
 # 现状基线（只允许变好，不允许变差）：前 20k 里还没认出的实用词条
 BASELINE = {"top5000_missing_l1": 0, "top20k_missing_l1": 1653}
 
@@ -73,6 +75,30 @@ def main():
         problems.append("前 5000 缺一级从基线 %d 涨到 %d" % (BASELINE["top5000_missing_l1"], len(top5)))
     if len(top20) > BASELINE["top20k_missing_l1"]:
         problems.append("前 20000 缺一级从基线 %d 涨到 %d" % (BASELINE["top20k_missing_l1"], len(top20)))
+
+    # 页面的一级/二级按钮必须覆盖数据里出现过的一级/二级，否则筛选项会悄悄变少
+    try:
+        html = open(HTML, encoding="utf-8").read()
+        pref_src = re.search(r"L2_PREF = \{(.*?)\n\s*\};", html, re.S).group(1)
+        l2_pref = eval("{" + pref_src + "}")
+        order_src = re.search(r"L1_ORDER = \[(.*?)\]", html, re.S).group(1)
+        l1_order = [s.strip().strip("'") for s in order_src.split(",") if s.strip()]
+        have = collections.defaultdict(set)
+        for r in rows:
+            if t1(r):
+                have[(r[5] or "").strip()].add((r[6] or "").strip())
+        miss_l1 = sorted(set(have) - set(l1_order))
+        if miss_l1:
+            problems.append("页面一级按钮漏了: %s" % ", ".join(miss_l1))
+        for l1, l2s in sorted(have.items()):
+            pref = set(l2_pref.get(l1) or [])
+            if not pref:
+                continue
+            miss = sorted(x for x in l2s if x and x not in pref)
+            if miss:
+                problems.append("页面二级按钮[%s]漏了: %s" % (l1, ", ".join(miss)))
+    except Exception as e:                                  # noqa: BLE001
+        problems.append("页面分类按钮检查失败: %r" % (e,))
 
     print("")
     if problems:

@@ -66,7 +66,6 @@ MERGE = [
     # 人物：体貌
     ("人物", "胸", "人物", "体貌特征"),
     ("人物", "尾巴", "人物", "体貌特征"),
-    ("人物", "耳朵", "人物", "体貌特征"),
     ("人物", "角", "人物", "体貌特征"),
     ("人物", "翅膀", "人物", "体貌特征"),
     ("人物", "年龄", "人物", "体形与肤色"),
@@ -126,6 +125,19 @@ MERGE = [
     ("内置分类-禁", "胸", "内置分类-禁", "R18"),
     ("反向", "", "反向", "负面词"),
     ("反向", "负面提示", "反向", "负面词"),
+    # ---- 第二轮合并：按「穿在哪 / 长在哪」重排，少而正交 ----
+    ("人物", "发型", "人物", "头发"),
+    ("人物", "发色", "人物", "头发"),
+    ("人物", "五官", "人物", "面部"),
+    ("人物", "表情", "人物", "面部"),
+    ("人物", "体形与肤色", "人物", "体貌特征"),
+    ("人物", "职业", "人物", "身份"),
+    ("背景", "户外", "背景", "场景"),
+    ("背景", "室内", "背景", "场景"),
+    ("元标签", "翻译", "元标签", "图注"),
+    ("构图取景", "特写", "构图取景", "镜头"),
+    ("构图取景", "视线", "构图取景", "视角"),
+    ("画面", "氛围", "背景", "氛围"),
 ]
 MERGE_MAP = {(a, b): (c, d) for a, b, c, d in MERGE}
 
@@ -991,6 +1003,98 @@ def contains(name, words):
     return False
 
 
+# ---------------------------------------------------------------- 服装/配饰 再细分
+# 原本的「服装 / 配饰 / 汉服」是按来源分的，同一类东西（比如裙子和汉服裙子）会散在两边。
+# 这里改成按**穿在哪**分：上身 / 下身 / 全身 / 鞋袜 / 头部饰品 / 脖子 / 耳朵 / 配饰。
+# 命中顺序 = 优先级：先抓鞋袜/头/耳/颈，再抓明确的全身装，最后才是上/下身。
+# 优先词（最高优先）：这些词里含别的词表的子串，必须先判，否则会归错
+PRIOR_UPPER = ("连帽衫", "帽衫", "连帽卫衣", "兜帽", "hoodie", "hood", "cape", "capelet", "dress_shirt",
+               "sailor_collar", "披风", "斗篷", "披肩")
+L2_SHOES = ("boot", "shoe", "sandal", "sneaker", "loafer", "heel", "sock", "stocking", "thighhigh",
+            "kneehigh", "pantyhose", "legwear", "garter", "鞋", "靴", "袜", "高跟", "凉鞋", "丝袜",
+            "过膝袜", "长袜", "短袜", "网袜", "吊带袜", "拖鞋", "木屐")
+L2_HEAD = ("hat", "cap", "helmet", "beret", "crown", "tiara", "hairband", "headband",
+           "hair_ornament", "hair_accessory", "hair_bow", "hair_flower", "hair_ribbon", "headpiece",
+           "headgear", "scrunchie", "veil", "hachimaki", "tate_eboshi", "bonnet", "nightcap",
+           "circlet", "eyewear_on_head", "帽", "头盔", "发饰", "头饰", "头环", "头巾", "面纱",
+           "发带", "发夹", "发绳", "发簪", "头戴", "王冠", "皇冠", "睡帽", "斗笠")
+L2_EAR = ("earring", "ear_ornament", "earclip", "ear_piercing", "耳环", "耳饰", "耳夹", "耳钉", "耳挂")
+L2_WAIST = ("belt", "sash", "waistband", "腰带", "腰封", "束腰", "皮带")
+# 会被「按穿着部位重判」的二级（含旧桶）
+CLOTH_L2 = ("服装", "配饰", "汉服", "上身装饰", "下身装饰", "全身装饰", "鞋袜", "头部饰品", "脖子", "耳朵")
+# danbooru 的「概念 / meta」标签：说的不是具体穿在哪，归「其他」
+L2_PERSON_META = ("alternate_costume", "official_alternate_costume", "cosplay", "undressing",
+                  "clothes_removed", "no_clothes", "partially_undressed")
+L2_NECK = ("choker", "necklace", "pendant", "collar_chain", "collar_pin", "tie_clip", "项链", "项圈",
+           "锁骨链", "领针", "颈饰", "颈圈", "围脖")
+L2_FULL = ("dress", "kimono", "yukata", "robe", "gown", "swimsuit", "bikini", "leotard", "bodysuit",
+           "uniform", "sailor", "maid", "serafuku", "pajamas", "jumpsuit", "wedding",
+           "chinese_clothes", "japanese_clothes", "dougi", "playboy_bunny", "hanfu", "overalls",
+           "raincoat", "poncho", "连衣裙", "襦裙", "和服", "浴衣", "泳衣", "比基尼", "婚纱", "礼服",
+           "旗袍", "汉服", "唐装", "制服", "校服", "道服", "战袍", "睡衣", "兔女郎", "女仆", "连体",
+           "铠甲", "胸甲", "雨衣", "巫女服", "丧服", "圣诞装", "工装裤")
+L2_LOWER = ("skirt", "pants", "shorts", "jeans", "bloomers", "hakama", "harem_pants", "裙", "裤",
+            "百褶裙", "褶裙", "迷你裙", "内裤", "短裤", "牛仔裤", "灯笼裤", "围裙", "裙子")
+L2_UPPER = ("shirt", "sweater", "hoodie", "jacket", "coat", "blazer", "cardigan", "vest", "tank_top",
+            "camisole", "crop_top", "blouse", "t-shirt", "apron", "necktie", "bowtie", "scarf",
+            "collar", "sleeve", "bra", "corset", "suspenders", "cape", "cloak", "shawl", "suit",
+            "上衣", "衬衫", "衬衣", "毛衣", "卫衣", "背心", "外套", "夹克", "大衣", "风衣", "短袖",
+            "长袖", "无袖", "胸罩", "内衣", "领带", "领结", "围巾", "袖子", "翻领", "开衫", "马甲",
+            "抹胸", "胸衣", "斗篷", "披风", "披肩", "背带",
+            # 汉服单品（按穿在哪归位，不再单独一个「汉服」桶）
+            "上衫", "短衫", "长衫", "宋抹", "披帛", "霞帔", "领子")
+
+
+def split_person_cloth(name, zh):
+    """给 人物·服装 / 配饰 / 汉服 的行按「穿在哪」定二级；None = 没认出（调用方决定兜底）。"""
+    hay = (name or "").lower() + " " + (zh or "")
+    # 优先词：避免被其它词表截断误判（cape 不能命中 cap，连帽衫不能命中「帽」，
+    # dress_shirt 不能命中 dress，belt_collar 要靠「脖子」但 belt 要归配饰）
+    for k in PRIOR_UPPER:
+        if k in hay:
+            return "上身装饰"
+    for l2, keys in (("鞋袜", L2_SHOES), ("头部饰品", L2_HEAD), ("耳朵", L2_EAR), ("脖子", L2_NECK),
+                     ("配饰", L2_WAIST), ("全身装饰", L2_FULL), ("下身装饰", L2_LOWER),
+                     ("上身装饰", L2_UPPER)):
+        for k in keys:
+            if k in hay:
+                return l2
+    return None
+
+
+# ---------------------------------------------------------------- 物件 再细分
+# 物件原本只有一个空二级（1239 条），挑出写提示词最常用的几类
+ITEM_WEAPON = ("weapon", "sword", "dagger", "katana", "knife", "gun", "pistol", "rifle", "revolver",
+               "shotgun", "cannon", "spear", "lance", "halberd", "polearm", "trident", "scythe",
+               "whip", "mace", "grenade", "bomb", "missile", "shield", "quiver",
+               "武器", "剑", "刀", "枪", "手术刀", "弓箭", "弓", "箭", "斧", "锤", "戟", "矛", "盾",
+               "镰刀", "鞭", "炮弹", "手雷", "炸弹", "导弹")
+ITEM_FOOD = ("food", "fruit", "vegetable", "bread", "toast", "cake", "candy", "sweets", "cookie",
+             "chocolate", "drink", "juice", "tea", "coffee", "milk", "ice_cream", "dessert", "meat",
+             "rice", "noodle", "sushi", "pizza", "burger", "donut", "macaron", "pancake",
+             "食物", "水果", "蔬菜", "面包", "蛋糕", "糖果", "饼干", "巧克力", "饮料", "果汁", "茶",
+             "咖啡", "牛奶", "冰淇淋", "甜点", "肉", "米饭", "面条", "寿司", "披萨", "甜甜圈")
+ITEM_PLANT = ("flower", "petal", "rose", "leaf", "leaves", "tree", "branch", "grass", "plant",
+              "bonsai", "vines", "seed", "mushroom", "cactus", "sunflower", "sakura", "cherry_blossom",
+              "花", "玫瑰", "叶", "树", "草", "植物", "花瓣", "枝", "种子", "蘑菇", "仙人掌",
+              "向日葵", "樱花", "盆栽")
+ITEM_FURNITURE = ("chair", "table", "desk", "couch", "sofa", "bed", "pillow", "bench", "shelf",
+                  "cabinet", "lamp", "mirror", "curtain", "carpet", "rug", "cushion", "stool",
+                  "furniture", "dresser", "bookcase", "椅子", "桌", "沙发", "床", "枕头", "长椅",
+                  "架子", "柜", "灯", "镜子", "窗帘", "地毯", "垫子", "床单")
+
+
+def split_item(name, zh):
+    """物件的二级：武器 / 食物 / 植物花卉 / 家具与家居；None = 归「其他物件」。"""
+    hay = (name or "").lower() + " " + (zh or "")
+    for l2, keys in (("武器", ITEM_WEAPON), ("食物", ITEM_FOOD), ("植物花卉", ITEM_PLANT),
+                     ("家具与家居", ITEM_FURNITURE)):
+        for k in keys:
+            if k in hay:
+                return l2
+    return None
+
+
 def classify(name, cat, zh=""):
     """返回 (一级, 二级)；None 表示这次不铺（画师 / 作品 / 角色名）。"""
     ov = OVERRIDES.get(name)          # 人工点名优先
@@ -1108,7 +1212,7 @@ def main():
     order = sorted(range(len(rows)), key=lambda i: -heat(rows[i]))
     rank = {i: k + 1 for k, i in enumerate(order)}
 
-    merged = filled = skipped = 0
+    merged = filled = skipped = split_n = item_n = 0
     stat = collections.Counter()
     unmatched = []
     for i in range(len(rows)):
@@ -1126,6 +1230,36 @@ def main():
             if new and new != (l1, l2):
                 r[5], r[6] = new
                 merged += 1
+            # 人物·服装 / 配饰 / 汉服 按「穿在哪」细分；已分过的桶也重判一次（改词表能自动纠错）
+            cur = (r[6] or "").strip()
+            if r[5] == "人物" and cur in CLOTH_L2:
+                if r[0] in L2_PERSON_META and cur != "其他":
+                    r[6] = "其他"
+                    split_n += 1
+                else:
+                    sub = split_person_cloth(r[0], r[4] if len(r) > 4 else "")
+                    if sub:
+                        if sub != cur:
+                            r[6] = sub
+                            split_n += 1
+                    elif cur == "服装":
+                        r[6] = "上身装饰"
+                        split_n += 1
+                    elif cur == "汉服":
+                        r[6] = "全身装饰"
+                        split_n += 1
+            # 历史遗留回补：早期把「耳朵」并进了「体貌特征」，耳饰这类要回到「耳朵」
+            elif r[5] == "人物" and cur == "体貌特征":
+                hay = (r[0] or "").lower() + " " + (r[4] if len(r) > 4 else "")
+                if any(k in hay for k in L2_EAR):
+                    r[6] = "耳朵"
+                    split_n += 1
+            # 物件：空二级 -> 武器 / 食物 / 植物花卉 / 家具与家居 / 其他物件
+            elif r[5] == "物件":
+                sub = split_item(r[0], r[4] if len(r) > 4 else "") or "其他物件"
+                if cur != sub:
+                    r[6] = sub
+                    item_n += 1
             stat[(r[5], (r[6] or "").strip())] += 1
             continue
         if merge_only or rank[i] > limit:
@@ -1142,6 +1276,8 @@ def main():
         stat[(got[0], got[1])] += 1
 
     print("二级合并（重写旧桶）:", merged, "行")
+    print("服装/配饰按穿着部位细分:", split_n, "行")
+    print("物件细分:", item_n, "行")
     print("规则分类（本次填补）:", filled, "行（热度前 %d 名）" % limit)
     print("垫底类（画师/角色/作品）跳过:", skipped, "行")
     print("规则没认出的:", len(unmatched), "行")
