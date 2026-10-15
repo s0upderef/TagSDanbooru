@@ -647,17 +647,9 @@
                                 class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
                             <i class="fa-solid fa-folder-open text-amber-400"></i> 打开文件夹
                         </button>
-                        <button id="wb-del-run" title="把这一批的全部图片送进回收站（可从回收站还原）"
+                        <button id="wb-del-all" title="把 _internal/output/ 里所有系列的批次一起送进回收站（可从回收站还原）；只想删某一批/某个系列，点它卡片右边的垃圾桶就行"
                                 class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
-                            <i class="fa-solid fa-trash-can text-red-400"></i> 删除这一批
-                        </button>
-                        <button id="wb-del-series" title="把当前系列的全部批次送进回收站（可从回收站还原）"
-                                class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
-                            <i class="fa-solid fa-trash-can text-red-400"></i> 删除这个系列
-                        </button>
-                        <button id="wb-del-all" title="把 _internal/output/ 里的全部批次送进回收站（可从回收站还原）"
-                                class="h-6 px-2 text-xs flex items-center gap-1 rounded-md transition-colors duration-200 bg-slate-700 text-slate-200 hover:bg-slate-600">
-                            <i class="fa-solid fa-trash-can text-red-400"></i> 删除全部
+                            <i class="fa-solid fa-trash-can text-red-400"></i> 删除全部出图
                         </button>
                     </div>
                 </div>
@@ -1959,8 +1951,7 @@
             gallery: $('wb-gallery'), galleryInfo: $('wb-gallery-info'),
             live: $('wb-live'), liveInfo: $('wb-live-info'), liveGallery: $('wb-live-gallery'),
             seriesbar: $('wb-seriesbar'), runbar: $('wb-runbar'),
-            openDir: $('wb-open-dir'), delRun: $('wb-del-run'), delSeries: $('wb-del-series'),
-            delAll: $('wb-del-all'), reload: $('wb-reload'),
+            openDir: $('wb-open-dir'), delAll: $('wb-del-all'), reload: $('wb-reload'),
             lightbox: $('wb-lightbox'), lightboxImg: $('wb-lightbox-img'),
             lightboxTags: $('wb-lightbox-tags'), lightboxTagInfo: $('wb-lightbox-tag-info'),
             lightboxCap: $('wb-lightbox-cap'), lightboxPrev: $('wb-lightbox-prev'),
@@ -2496,15 +2487,32 @@
             await doDeleteReq(body, what);
         }
 
-        // 系列 / 批次卡片上的小垃圾桶：第一次点变红等确认，3 秒内再点才真删
+        // 卡片垃圾桶的两步确认：第一次点亮变红（图标不换、卡片尺寸不变），3 秒内再点才真删
+        function confirmIcon(el, onConfirm) {
+            if (el.dataset.armed === '1') { disarmIcon(el); onConfirm(); return; }
+            el.dataset.armed = '1';
+            el.style.color = '#ef4444';
+            el.style.background = 'rgba(15,23,42,.8)';
+            el.title = '再点一次确认删除（进回收站，可还原）';
+            setTimeout(() => { if (el.dataset.armed === '1') disarmIcon(el); }, 3000);
+        }
+
+        function disarmIcon(el) {
+            el.dataset.armed = '';
+            el.style.color = '';
+            el.style.background = '';
+            el.title = '把这一项送进回收站（可还原）';
+        }
+
+        // 系列 / 批次卡片上的小垃圾桶（现在它是批次、系列唯一的删除入口）
         function delSeriesNow(name, el) {
             const rs = runsOfSeries(name);
-            confirmThen(el, '确认删除？', () => doDeleteReq({ series: name }, '系列「' + name + '」'));
+            confirmIcon(el, () => doDeleteReq({ series: name }, '系列「' + name + '」'));
             E.progressText.textContent = '再点一次就删掉系列「' + name + '」' + scopeCountText(rs) + '（进回收站，可还原）';
         }
 
         function delRunNow(run, el) {
-            confirmThen(el, '确认删除？', () => doDelete(run.run_id, null, '这一批'));
+            confirmIcon(el, () => doDelete(run.run_id, null, '这一批'));
             E.progressText.textContent = '再点一次就删掉这一批' + batchCountText(run) + '（进回收站，可还原）';
         }
 
@@ -2671,10 +2679,13 @@
             b.appendChild(label);
             b.title = title;
             b.addEventListener('click', onClick);
-            // 每个系列 / 批次卡片自带一个小垃圾桶：不用先切视图也能直接删掉它
+            // 每个系列 / 批次卡片自带一个小垃圾桶：不用先切视图也能直接删掉它。
+            // 当前选中的那张常显（不然 hover 才发现有这个按钮），其余 hover 才显形。
             if (onDelete) {
                 const del = document.createElement('span');
-                del.className = 'ml-0.5 px-1 rounded text-red-300 hover:text-red-100 hover:bg-black/40 opacity-0 group-hover:opacity-100';
+                del.className = 'ml-0.5 px-1 rounded text-red-300 hover:text-red-100 hover:bg-black/40 transition-opacity ' +
+                    (active ? 'opacity-70' : 'opacity-0 group-hover:opacity-100');
+                del.title = '把这一项送进回收站（可还原）';
                 del.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
                 del.addEventListener('click', (e) => { e.stopPropagation(); onDelete(del); });
                 b.appendChild(del);
@@ -3066,31 +3077,11 @@
             else if (currentSeries) reveal(currentSeriesDir(), null);
             else reveal(null, null);
         });
-        E.delRun.addEventListener('click', () => {
-            if (currentRunId === ALL) {
-                E.progressText.textContent = '「全部」是合并视图：直接点批次条上那一批的垃圾桶，'
-                    + '或先选一个批次再删，也可以用「删除这个系列」/「删除全部」';
-                return;
-            }
-            if (!currentRunId) { E.progressText.textContent = '当前没有可删除的批次'; return; }
-            const r = runById(currentRunId);
-            confirmThen(E.delRun, '确认删除这一批？', () => doDelete(currentRunId, null, '这一批'));
-            E.progressText.textContent = '再点一次就删掉这一批' + (r ? batchCountText(r) : '')
-                + '（进回收站，可还原）';
-        });
-        // 删某个系列（该系列的全部批次）
-        E.delSeries.addEventListener('click', () => {
-            if (!currentSeries) { E.progressText.textContent = '当前没有可删除的系列'; return; }
-            const rs = runsOfSeries(currentSeries);
-            confirmThen(E.delSeries, '确认删除这个系列？', () =>
-                doDeleteReq({ series: currentSeries }, '系列「' + currentSeries + '」'));
-            E.progressText.textContent = '再点一次就删掉系列「' + currentSeries + '」'
-                + scopeCountText(rs) + '（进回收站，可还原）';
-        });
-        // 删全部（_internal/output/ 里的所有系列、所有批次）
+        // 删全部出图（_internal/output/ 里的所有系列、所有批次）。
+        // 只删某一批 / 某个系列 → 点那张卡片右边的垃圾桶（这才是"选谁删谁"，不用先切视图）
         E.delAll.addEventListener('click', () => {
             if (!allRuns.length) { E.progressText.textContent = '还没有可删除的出图'; return; }
-            confirmThen(E.delAll, '确认删除全部？', () => doDeleteReq({ all: true }, '全部出图'));
+            confirmThen(E.delAll, '确认删除全部出图？', () => doDeleteReq({ all: true }, '全部出图'));
             E.progressText.textContent = '再点一次就删掉全部出图'
                 + scopeCountText(allRuns) + '（进回收站，可还原）';
         });
