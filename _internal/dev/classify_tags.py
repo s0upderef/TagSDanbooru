@@ -1039,8 +1039,8 @@ L2_SHOES = ("boot", "shoe", "sandal", "sneaker", "loafer", "heel", "sock", "stoc
 L2_HEAD = ("hat", "cap", "helmet", "beret", "crown", "tiara", "hairband", "headband",
            "hair_ornament", "hair_accessory", "hair_bow", "hair_flower", "hair_ribbon", "headpiece",
            "headgear", "scrunchie", "veil", "hachimaki", "tate_eboshi", "bonnet", "nightcap",
-           "circlet", "eyewear_on_head", "帽", "头盔", "发饰", "头饰", "头环", "头巾", "面纱",
-           "发带", "发夹", "发绳", "发簪", "头戴", "王冠", "皇冠", "睡帽", "斗笠", "头绳", "bobble",
+           "circlet", "eyewear_on_head", "halo", "帽", "头盔", "发饰", "头饰", "头环", "头巾", "面纱",
+           "发带", "发夹", "发绳", "发簪", "头戴", "王冠", "皇冠", "睡帽", "斗笠", "头绳", "bobble", "光环",
            # 眼镜/眼罩一类（参考站归「头部配饰」）
            "glasses", "sunglasses", "monocle", "eyepatch", "blindfold", "goggles", "eyewear", "visor",
            "眼镜", "太阳镜", "眼罩", "护目镜", "墨镜")
@@ -1081,14 +1081,14 @@ L2_WAIST = ("belt", "sash", "waistband", "腰带", "腰封", "束腰", "皮带")
 # 会被「按穿着部位重判」的二级（含旧桶）；体貌/面部/头发里也混着耳饰、兽耳、纹身这类
 CLOTH_L2 = ("服装", "配饰", "汉服", "上身衣装", "下身衣装", "全身衣装", "束缚具", "鞋袜", "头部配饰",
             "脖子", "耳朵", "胸部")
-REJUDGE_L2 = CLOTH_L2 + ("体貌特征", "面部", "头发")
+REJUDGE_L2 = CLOTH_L2 + ("体貌特征", "面部", "头发", "其他", "对象与数量")
 # danbooru 的「概念 / meta」标签：说的不是具体穿在哪，归「其他」
 L2_PERSON_META = ("alternate_costume", "official_alternate_costume", "cosplay", "undressing",
                   "clothes_removed", "no_clothes", "partially_undressed")
 L2_FULL = ("dress", "kimono", "yukata", "robe", "gown", "swimsuit", "bikini", "leotard", "bodysuit",
            "uniform", "sailor", "maid", "serafuku", "pajamas", "jumpsuit", "wedding",
            "chinese_clothes", "japanese_clothes", "dougi", "playboy_bunny", "hanfu", "overalls",
-           "raincoat", "poncho", "bikesuit", "连衣裙", "襦裙", "和服", "浴衣", "泳衣", "比基尼", "婚纱", "礼服",
+           "raincoat", "poncho", "bikesuit", "fashion", "连衣裙", "襦裙", "和服", "浴衣", "泳衣", "比基尼", "婚纱", "礼服",
            "旗袍", "汉服", "唐装", "制服", "校服", "道服", "战袍", "睡衣", "兔女郎", "女仆", "连体",
            "铠甲", "胸甲", "雨衣", "巫女服", "丧服", "圣诞装", "工装裤")
 L2_LOWER = ("skirt", "pants", "shorts", "jeans", "bloomers", "hakama", "harem_pants", "裙", "裤",
@@ -1200,22 +1200,25 @@ def split_item(name, zh):
 # 参考站把「动作」和「摆位（朝向、视线）」分开，构图取景里混进来的动作词要送回人物。
 FRAME_EXACT = {
     "bikesuit": ("人物", "全身衣装"), "topless_female": ("人物", "上身衣装"),
-    "bandaged_torso": ("人物", "身体装饰"), "halfling": ("人物", "类型"),
+    "bandaged_torso": ("人物", "体貌特征"), "halfling": ("人物", "类型"),
     "mini_person": ("人物", "类型"), "chibikemo": ("人物", "类型"), "sheet_ghost": ("人物", "类型"),
     "skull_head": ("人物", "类型"), "fly": ("人物", "类型"),
     "chest_hair_peek": ("人物", "胸部"),
+    "half  body  under  water": ("构图取景", "取景"),      # 别名行：名字里是双空格
+    "half body under water": ("构图取景", "取景"),
 }
 FRAME_TO_POSE = ("holding", "hold_", "hug", "carry", "carrying", "walk", "run", "riding", "straddl",
                  "kneel", "crouch", "jump", "danc", "salute", "waving", "grabbing", "patting",
                  "kissing", "kiss", "lick", "smell", "stretch", "pray", "meditat", "tiptoe",
                  "peace_symbol", "middle_finger", "hand_on_hip", "hands_on_hips", "outstretched",
                  "spread_arms", "bent_over", "leaning", "reaching", "adjusting", "fighting_stance",
-                 "arm_support", "sit", "stand", "lying", "lie_", "biting", "fingering", "arm_hug",
-                 "crossed_arms", "cheek-to-cheek", "against_wall", "midair")
+                 "arm_support", "sit", "stand", "lying", "lie", "lie_", "biting", "fingering", "arm_hug",
+                 "crossed_arms", "cheek-to-cheek", "against_wall", "midair", "back-to-back", "hair_pull",
+                 "fruit_on_head", "hand_on_another")
 FRAME_TO_BODY = ("forearms", "calves", "back_muscles", "arm_fins", "animal_legs", "very_hairy",
                  "armpit_hair", "sweaty_armpits", "smelly_armpits", "rayman_limbs", "armless_amputee",
                  "reverse-jointed_legs", "gill", "single_bare_foot", "navel_peek", "ass_peek",
-                 "no_prosthetic_arm", "swaddled")
+                 "no_prosthetic_arm", "swaddled", "disembodied")
 FRAME_TO_FACE = ("horizontal_pupils", "vertical_pupils", "star-shaped_pupils")
 FRAME_VIEW = ("full_body", "full-body", "upper_body", "lower_body", "portrait", "close-up", "closeup",
               "cowboy_shot", "fisheye", "wide_shot", "out_of_frame", "cropped", "focus", "zoom",
@@ -1225,7 +1228,7 @@ FRAME_STANCE = ("facing", "profile", "from_behind", "from_side", "looking", "sta
                 "回眸", "凝视")
 FRAME_ANGLE = ("pov", "viewer", "dutch_angle", "from_above", "from_below", "aerial", "bird", "worm",
                "angle", "upside-down", "panoramic", "eye level", "top-down", "top down", "ground view",
-               "side view", "俯视", "仰视", "视角", "视点")
+               "side view", "from_outside", "俯视", "仰视", "视角", "视点")
 
 
 def split_framing(name, zh):
@@ -1328,8 +1331,27 @@ def split_ambience(name, zh):
 
 # 之前被词根误抓的个别词，点名纠正
 L2_FIX_EXACT = {
-    "european_architecture": ("背景", "场景"),        # 含 rope，被当成绳缚了
+    "european_architecture": ("背景", "场景"),          # 含 rope，被当成绳缚了
+    "male-female_symbol": ("画面", "装饰"),             # ♂♀ 符号，不是「几个人」
 }
+
+
+# 对象与数量里混进来的：性别 / 种族 / 性向 -> 类型，性相关 -> 性行为
+QTY_TO_SEX = ("futa", "threesome", "sandwiched")
+QTY_TYPE_HEAD = ("female_", "male_")
+QTY_TYPE_TAIL = ("_female", "_male", "_goblin", "_orc", "_butler")
+
+
+def rejudge_qty(name, zh):
+    """对象与数量：只保留「几个 / 群体」这类；返回二级，None = 保持原样。"""
+    n = (name or "").lower().strip()
+    if any(k in n for k in QTY_TO_SEX):
+        return "性行为"
+    if n == "single_pauldron":                  # 单边肩甲，是衣服不是数量
+        return "全身衣装"
+    if n.endswith(QTY_TYPE_TAIL) or n.startswith(QTY_TYPE_HEAD):
+        return "类型"
+    return None
 
 
 def merge_l2(l1, l2):
@@ -1343,6 +1365,9 @@ def rejudge(l1, l2, name, zh):
     if name in L2_FIX_EXACT:
         return L2_FIX_EXACT[name]
     l2 = (l2 or "").strip()
+    if l1 == "人物" and l2 == "对象与数量":
+        sub = rejudge_qty(name, zh)
+        return (l1, sub) if sub else (l1, l2)
     if l1 == "人物" and l2 in REJUDGE_L2:
         sub = rejudge_person(name, zh)
         if sub:
