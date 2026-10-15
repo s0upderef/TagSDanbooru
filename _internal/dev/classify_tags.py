@@ -1078,7 +1078,10 @@ L2_RESTRAINT_SKIP = ("wrist_cuff", "sleeve_cuff", "cufflink", "wristband", "sauc
 # 这几个是「袖口/臂环/腰链」一类饰品，明确归配饰
 L2_ACC_EXACT = ("cuffs", "ankle_cuffs", "arm_cuffs", "leg_cuffs", "thigh_cuffs", "buttoned_cuffs",
                 "frilled_cuffs", "fur_cuffs", "belt_cuffs", "belly_chain", "belt_chain", "rope_belt",
-                "bar_cuffs", "hand_cuffs")
+                "bar_cuffs", "hand_cuffs",
+                # 手部饰品：手链 / 连指手套（原来被 up 衣装抢走）
+                "bracelet", "bead_bracelet", "spiked_bracelet", "chain_bracelet", "silver_bracelet",
+                "gold_bracelet", "mittens", "fingerless_mittens")
 # 姿势类（原来混在体貌特征里）
 L2_POSE_WORDS = ("hand_up", "hands_up", "arm_up", "arms_up", "leg_up", "hands_on_hips", "hand_on_hip",
                  "crossed_arms", "arms_crossed", "hand_on_own_hip", "hands_behind_back")
@@ -1097,15 +1100,21 @@ BODY_TO_POSE = ("hand_on_", "hands_on_", "hand_over", "hands_in_", "hands_behind
                 "head_on_arm")
 # 这几个名字太短，只能整名匹配（否则 slim_legs 会被 m_legs 抓走）
 BODY_TO_POSE_EXACT = ("m_legs", "v_legs", "v_arms")
-# 通用动作词：不管现在落在哪个桶（拿着/亲着/舔着某个东西 -> 都是动作，不是那个东西）
+# 动作词：不管现在落在哪个桶（拿着/亲着/舔着某个东西 -> 都是动作，不是那个东西）
 ACTION_PREFIX = ("holding_", "carrying_", "kissing_", "licking_", "grabbing_", "touching_", "pressing_",
                  "pulling_", "pushing_", "throwing_", "eating_", "drinking_", "smelling_", "sniffing_",
                  "hugging_", "sitting_on_", "standing_on_", "lying_on_", "leaning_on_", "lifting_",
-                 "riding_", "adjusting_", "putting_on_", "applying_")
+                 "riding_", "adjusting_", "putting_on_", "applying_", "biting_", "tearing_", "check_",
+                 "putting_" )
+# 名字里是动作但前缀不统一的，点名（掀衣服 / 拉肩带 / 咬衣服…）
+ACTION_EXACT = ("clothes_lift", "shirt_lift", "clothes_pull", "clothes_grab", "bra_lift", "strap_slip",
+                "strap_break", "check_clothing", "clothes_on_and_off", "under_another's_clothes",
+                "biting_clothes", "tearing_up", "sleeves_rolled_up", "clothes_around_waist")
 # 「riding crop / riding hood」这类名字里有动作词的"物件/服装"，别误伤
 ACTION_EXCLUDE = ("riding_crop", "riding_hood", "riding_boots", "riding_helmet", "riding_gloves",
                   "riding_breeches", "drinking_glass", "drinking_straw", "throwing_knife",
-                  "holding_bow_(music)_instrument")
+                  "holding_bow_(music)_instrument",
+                  "biting_neck", "biting_ear")     # 这两个偏「性行为」，留在原桶
 
 
 def action_hit(name):
@@ -1113,7 +1122,7 @@ def action_hit(name):
     n = (name or "").lower()
     if any(x in n for x in ACTION_EXCLUDE):
         return False
-    return n.startswith(ACTION_PREFIX)
+    return n.startswith(ACTION_PREFIX) or n in ACTION_EXACT
 # 体貌特征里混进来的装备/道具（点名纠正）
 BODY_TO_GEAR = {
     "shoulder_armor": ("人物", "上身衣装"),
@@ -1196,6 +1205,8 @@ def rejudge_person(name, zh):
     """人物下「穿 / 戴 / 长在身上」的行统一重判；返回二级，None = 保持原样。"""
     hay = (name or "").lower() + " " + (zh or "")
     if name in L2_PERSON_META:
+        return "其他"
+    if name.endswith("_(cosplay)"):            # 某个角色的 cosplay 图 -> 概念类
         return "其他"
     for k in PRIOR_UPPER:                     # 优先词：cape 不能被 cap 抢走
         if k in hay:
@@ -1430,6 +1441,15 @@ L2_FIX_EXACT = {
     "glove_pull": ("人物", "姿势动作"),
     "drawing_bow": ("人物", "姿势动作"),
     "headphones_removed": ("人物", "姿势动作"),
+    # 上衣装里混的物件 / 背景 / 身体痕迹
+    "branch": ("物件", "植物花卉"),
+    "cityscape": ("背景", "场景"),
+    "snowscape": ("背景", "场景"),
+    "on_branch": ("人物", "姿势动作"),
+    "slave_brand": ("人物", "体貌特征"),
+    "sweat_stain": ("人物", "体貌特征"),
+    "libra_(symbol)": ("画面", "装饰"),
+    "libra_(constellation)": ("背景", "自然景物"),
 }
 L2_FIX_EXACT.update(BODY_TO_GEAR)                       # 体貌特征里混进来的装备/道具
 
