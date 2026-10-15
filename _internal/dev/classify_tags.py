@@ -141,7 +141,8 @@ HAIR_COLORS = ("blonde", "black", "brown", "blue", "red", "pink", "white", "grey
 R18 = ("nipple", "penis", "pussy", "sex", "cum", "anus", "vaginal", "pubic", "bdsm", "bondage",
        "areola", "clitoris", "testicles", "nude", "censored", "hetero", "yaoi", "yuri", "incest",
        "rape", "orgasm", "masturbation", "topless", "underboob", "sideboob", "no_bra",
-       "no_panties", "pantyshot", "upskirt", "spread_legs", "presenting", "mosaic_censoring")
+       "no_panties", "pantyshot", "upskirt", "spread_legs", "presenting", "mosaic_censoring",
+       "cameltoe")
 META = ("translated", "translation_request", "check_translation", "artist_name", "character_name",
         "copyright_name", "signature", "speech_bubble", "english_text", "watermark", "bad_id",
         "dated", "commentary", "commentary_request", "japanese_text", "chinese_text", "korean_text",
@@ -150,7 +151,30 @@ META = ("translated", "translation_request", "check_translation", "artist_name",
         "commission", "reference_sheet", "character_sheet", "multiple_views", "photo",
         "(medium)", "_media", "watercolor", "oil_painting", "pixel_art", "greyscale", "monochrome",
         "comic", "sketch", "lineart", "storyboard", "cover", "sample", "unfinished",
-        "traditional", "vector", "tracing")
+        "traditional", "vector", "tracing", "parody", "meme", "crossover", "spoiler", "animated",
+        "high_contrast", "official_art", "fan_art", "ai-generated")
+# 题材 / 生物 / 身份：新桶「人物·物种」「人物·身份」
+SPECIES = ("animal", "animals", "bird", "cat", "dog", "fox", "wolf", "rabbit", "bunny", "mouse",
+           "tiger", "lion", "bear", "dragon", "snake", "fish", "whale", "shark", "insect", "bug",
+           "butterfly", "moth", "spider", "horse", "deer", "sheep", "cow", "pig", "monkey",
+           "pokemon", "pokemon_(creature)", "digimon", "robot", "android", "mecha", "cyborg",
+           "slime", "ghost", "zombie", "vampire", "angel", "demon", "devil", "elf", "orc", "goblin",
+           "fairy", "mermaid", "centaur", "lamia", "harpy", "kitsune", "nekomata", "tanuki",
+           "yokai", "youkai", "alien", "dinosaur", "kaiju", "monster", "creature")
+IDENTITY = ("virtual_youtuber", "vtuber", "idol", "singer", "dancer", "princess", "prince",
+            "nurse", "doctor", "teacher", "student", "office_lady", "waitress", "maid", "miko",
+            "knight", "samurai", "ninja", "soldier", "military", "police", "pirate", "wizard",
+            "witch", "priest", "nun", "cheerleader", "swimmer", "tennis_player", "fighter",
+            "otoko_no_ko", "futanari", "crossdressing", "genderbend", "gender_bend", "femboy",
+            "onee-san", "big_sister", "little_sister", "mother", "father", "family",
+            "siblings", "sisters", "brothers", "twins", "couple", "friends", "lovers")
+# 画风 / 题材风格
+STYLE = ("bara", "realistic", "semi-realistic", "3d", "3d_style", "chibi", "retro", "vaporwave",
+         "cyberpunk", "steampunk", "ukiyo-e", "art_nouveau", "impressionism", "minimalism",
+         "surreal", "abstract", "manga_style", "anime_style", "cartoon", "flat_color")
+# 年龄（归「人物·体形与肤色」）
+AGE = ("aged_up", "aged_down", "child", "children", "toddler", "baby", "elderly", "old_woman",
+       "old_man", "young", "teen", "teenager", "adult")
 FRAME = ("full_body", "upper_body", "lower_body", "cowboy_shot", "portrait", "close-up",
          "wide_shot", "dutch_angle", "pov", "from_above", "from_below", "from_behind", "from_side",
          "facing_viewer", "facing_away", "looking_at_viewer", "looking_away", "looking_back",
@@ -167,7 +191,8 @@ BG = ("outdoors", "indoors", "sky", "cloud", "night", "day", "sunset", "sunrise"
       "architecture", "landscape", "cityscape", "classroom", "kitchen", "bathroom", "bedroom",
       "office", "cafe", "restaurant", "shrine", "temple", "church", "school", "train", "car",
       "airplane", "boat", "space", "galaxy", "nebula", "underwater", "cave", "field", "mountain",
-      "desert", "island", "sunbeam", "light_rays", "lens_flare", "bokeh")
+      "desert", "island", "sunbeam", "light_rays", "lens_flare", "bokeh", "wind", "steam", "fog",
+      "mist", "smoke")
 CLOTH = ("shirt", "sleeve", "skirt", "dress", "pants", "shorts", "jeans", "sweater", "hoodie",
          "jacket", "coat", "apron", "uniform", "swimsuit", "bikini", "underwear", "panties", "bra",
          "lingerie", "leotard", "bodysuit", "swimwear", "kimono", "yukata", "robe", "scarf", "cape",
@@ -180,7 +205,9 @@ CLOTH = ("shirt", "sleeve", "skirt", "dress", "pants", "shorts", "jeans", "sweat
          "clothing_cutout", "clothes_removed", "undressing", "shirt_lift", "skirt_lift",
          "capelet", "sleeveless", "miniskirt", "maxiskirt", "playboy_bunny", "highleg",
          "zettai_ryouiki", "legwear", "sailor", "gym_uniform", "school_uniform", "halterneck",
-         "hood_up", "hood_down", "military_uniform", "armor", "armour")
+         "hood_up", "hood_down", "military_uniform", "armor", "armour", "blazer", "denim", "obi",
+         "animal_print", "polka_dot", "patterned", "sarong", "hakama", "harem_pants",
+         "pencil_skirt", "pleated_skirt", "school_swimsuit", "thigh_boots")
 ACC = ("glove", "sock", "stocking", "thighhigh", "kneehigh", "pantyhose", "boot", "shoe",
        "sandal", "sneaker", "loafer", "heel", "hat", "cap", "helmet", "beret", "crown", "tiara",
        "ribbon", "bow", "hairband", "headband", "headphones", "earmuffs", "earring", "necklace",
@@ -188,21 +215,24 @@ ACC = ("glove", "sock", "stocking", "thighhigh", "kneehigh", "pantyhose", "boot"
        "goggles", "eyepatch", "mask", "watch", "ring", "hair_ornament", "hair_accessory",
        "hair_bow", "hair_flower", "hair_ribbon", "veil", "badge", "armband", "garter", "corset",
        "bandage", "bandaid", "plaster", "bell", "jewelry", "brooch", "hairpin", "hairclip",
-       "barrette", "wristband", "leg_garter")
+       "barrette", "wristband", "leg_garter", "headgear", "scrunchie", "eyewear_on_head", "tassel",
+       "hair_scrunchie", "glasses_on_head")
 FACE = ("eye", "pupil", "iris", "eyelash", "eyebrow", "mouth", "lip", "teeth", "tongue", "fang",
         "stubble", "nose", "antlers", "beard", "moustache", "horn", "horns", "facial_mark")
 EXPR = ("smile", "blush", "frown", "grin", "cry", "tear", "angry", "anger", "surpris",
         "embarrass", "sweat", "sweatdrop", "drool", "expression", "open_mouth", "closed_mouth",
         "parted_lips", "pout", "smirk", "laugh", "giggle", "scream", "yawn", "sleepy", "shy",
         "worried", "sad", "disgust", "confused", "scared", "nervous", "serious", "expressionless",
-        "sigh", "kiss", ":d", ":(", "o_o", ":o", ":3", "^_^", ">_<", "uwu", ":>", ":-d", ";)", "xd")
+        "sigh", "kiss", ":d", ":(", "o_o", ":o", ":3", "^_^", ">_<", "uwu", ":>", ":-d", ";)",
+        "xd", "happy", "trembling", "drooling", "?", ";d", "nosebleed")
 BODY = ("breast", "cleavage", "navel", "thigh", "leg", "foot", "feet", "toes", "hand", "hands",
         "finger", "fingers", "arm", "arms", "ass", "butt", "hip", "hips", "waist", "collarbone",
         "neck", "shoulder", "back", "chest", "stomach", "belly", "midriff", "groin", "abs",
         "muscle", "muscular", "skin", "tail", "ear", "ears", "wing", "wings", "mole", "freckles",
         "tan", "tanlines", "pale", "wet", "blood", "scales", "fur", "whiskers", "claws", "paw",
         "tentacle", "fin", "gills", "antenna", "ahoge", "barefoot", "nails", "fingernails",
-        "sole", "soles", "piercing", "saliva", "scar", "skindentation", "tattoo", "body_writing")
+        "sole", "soles", "piercing", "saliva", "scar", "skindentation", "tattoo", "body_writing",
+        "pectorals")
 HAIR_WORDS = ("hair", "bangs", "ponytail", "twintail", "braid", "sidelock", "sidelocks", "bun",
               "bob_cut", "hime_cut", "drill", "curly", "wavy", "straight_hair", "spiky", "messy",
               "floating_hair", "wet_hair", "hair_intakes", "hair_between_eyes", "hair_over_shoulder",
@@ -217,7 +247,8 @@ POSE = ("sitting", "standing", "lying", "kneel", "squat", "crouch", "walking", "
         "on_side", "peeking", "walking_away", "head_tilt", "tilted_head", "arms_up",
         "arms_behind_back", "arms_crossed", "legs_crossed", "legs_together", "leg_lift",
         "hand_on_hip", "hand_on_chest", "hands_up", "yawning", "stretching_arms", "v",
-        "walking_away", "facing_away")
+        "walking_away", "facing_away", "groping", "eating", "sleeping", "bound", "wariza",
+        "knees_up")
 QTY = ("solo", "1girl", "1boy", "2girls", "2boys", "multiple_girls", "multiple_boys", "male",
        "female", "solo_focus", "male_focus", "female_focus", "crowd", "group", "duo")
 ITEM = ("flower", "weapon", "sword", "katana", "gun", "pistol", "rifle", "knife", "dagger",
@@ -229,13 +260,38 @@ ITEM = ("flower", "weapon", "sword", "katana", "gun", "pistol", "rifle", "knife"
         "umbrella", "parasol", "balloon", "candy", "cigarette", "pipe", "hand_fan", "lantern",
         "candle", "pillow", "cushion", "blanket", "towel", "mirror", "clock", "key", "chain",
         "rope", "doll", "stuffed", "plush", "toy", "ball", "dice", "card", "poster", "wind_chime",
-        "rose", "vase", "flower_pot", "box", "basket", "speaker", "television")
+        "rose", "vase", "flower_pot", "box", "basket", "speaker", "television", "chair", "table",
+        "couch", "fire", "gem", "cross", "staff", "polearm", "crystal", "spear")
 DECOR = ("sparkle", "star_(symbol)", "heart", "skull", "feather", "petals", "cherry_blossom",
          "leaves", "garland", "banner", "flag", "confetti", "bubble", "bubbles", "border",
-         "pattern", "frame", "ornament", "ornamental", "filigree", "floral", "sticker", "badge")
+         "pattern", "frame", "ornament", "ornamental", "filigree", "floral", "sticker", "badge",
+         "motion_lines", "letterboxed", "speed_lines", "impact_lines")
 LIGHT = ("lighting", "backlighting", "glowing", "glow", "shadow", "shadows", "rim_light",
          "spotlight", "sunbeam", "light_rays", "lens_flare", "bokeh", "dramatic_lighting",
-         "chiaroscuro", "god_rays", "bloom", "flare", "silhouette", "backlit")
+         "chiaroscuro", "god_rays", "bloom", "flare", "silhouette", "backlit", "sunlight",
+         "light_particles", "sparkling", "glint", "sunbeam")
+# 第二轮补词：按未认出清单的词频统计补出来的"家族"
+CLOTH += ("jumpsuit", "pajamas", "buruma", "trim", "strap", "straps", "shoulder_strap", "tube_top",
+          "hooded", "coat_dress", "long_coat", "fur_coat", "sportswear")
+ACC += ("eyewear", "headwear", "halo", "bandana", "footwear", "eyeshadow", "tinted_glasses",
+        "makeup", "ear_ornament", "nose_ring", "belly_chain", "waistband", "collar_chain",
+        "fishnets", "sheath")
+ITEM += ("chocolate", "gemstone", "paper", "note", "musical_note", "can", "sign", "signboard",
+         "tube", "test_tube", "toy_car", "straw", "jar", "crescent")
+FACE += ("cheek", "cheeks", "sclera", "toenails", "nails")
+DECOR += ("outline", "emblem", "framed", "spoken_heart", "star_pattern", "heart_pattern",
+          "floral_print", "checkered", "striped", "polka_dot", "^^^")
+STYLE += ("slice_of_life", "game_style", "photo_style", "painting_style", "foreshortening")
+BODY += ("body", "body_focus")
+POSE += ("pulling", "pulling_clothes", "reaching", "reaching_out", "gripping")
+# 第三轮：清单里剩下的常见词（一轮一轮加，收益递减就停）
+CLOTH += ("casual", "buckle", "belt_buckle", "bridal_gauntlets", "gauntlets", "corset_piercing")
+ACC += ("buckle", "collar_pin", "tie_clip")
+EXPR += ("breath", "breathing", "panting", "gasp", "sighing", "whisper", "shouting")
+IDENTITY += ("genderswap", "gender_swap", "tomboy", "gyaru", "cosplayer")
+BODY += ("thick_thighs", "wide_hips", "body_part")
+AGE += ("curvy", "plump", "slim", "tall", "short", "petite", "statuesque", "busty")
+R18 += ("panty_pull", "clothes_pull", "downblouse", "wardrobe_malfunction")
 
 
 def _tokens(name):
@@ -272,8 +328,16 @@ def classify(name, cat):
         return ("元标签", "图注")
     if contains(n, ("highres", "absurdres", "lowres", "resolution", "quality", "8k", "4k")):
         return ("画面", "画质")
+    if n.endswith(("_style", "_theme")):
+        return ("画面", "艺术风格")
+    if n.endswith(("_username", "_id")):
+        return ("元标签", "图注")
+    if n.endswith("_print"):
+        return ("人物", "服装")
     if contains(n, LIGHT):
         return ("画面", "光照")
+    if contains(n, STYLE):
+        return ("画面", "艺术风格")
     if n.endswith("_background") or contains(n, BG):
         if n.endswith("_background"):
             return ("背景", "纯色背景")
@@ -304,6 +368,10 @@ def classify(name, cat):
         return ("构图取景", "构图")
     if contains(n, HAIR_WORDS):
         return ("人物", "发色") if (contains(n, HAIR_COLORS) and "hair" in n) else ("人物", "发型")
+    if contains(n, SPECIES):
+        return ("人物", "物种")
+    if contains(n, IDENTITY):
+        return ("人物", "身份")
     if contains(n, FACE):
         return ("人物", "五官")
     if contains(n, EXPR):
@@ -314,6 +382,8 @@ def classify(name, cat):
         return ("人物", "服装")
     if contains(n, ACC):
         return ("人物", "配饰")
+    if contains(n, AGE):
+        return ("人物", "体形与肤色")
     if contains(n, POSE):
         return ("人物", "姿势动作")
     if contains(n, QTY):
