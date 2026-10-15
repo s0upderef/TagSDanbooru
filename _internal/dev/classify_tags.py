@@ -1077,6 +1077,69 @@ L2_ACC_EXACT = ("cuffs", "ankle_cuffs", "arm_cuffs", "leg_cuffs", "thigh_cuffs",
 # 姿势类（原来混在体貌特征里）
 L2_POSE_WORDS = ("hand_up", "hands_up", "arm_up", "arms_up", "leg_up", "hands_on_hips", "hand_on_hip",
                  "crossed_arms", "arms_crossed", "hand_on_own_hip", "hands_behind_back")
+# 体貌特征里混进来的动作词：手/臂/腿的位置、摆姿 -> 姿势动作
+BODY_TO_POSE = ("hand_on_", "hands_on_", "hand_over", "hands_in_", "hands_behind", "hugging_",
+                "grabbing_", "arm_at_", "arms_at_", "arm_behind", "arm_on_", "arms_on_", "arm_around",
+                "arms_around", "arm_pillow", "arm_sling", "arm_support", "clenched_hand",
+                "clenched_fist", "outstretched_", "index_finger", "finger_counting", "snapping_fingers",
+                "x_fingers", "x_arms", "crossed_legs", "legs_up",
+                "legs_apart", "legs_together", "leg_lift", "leg_grab", "spread_legs", "tiptoes",
+                "on_tiptoes", "leaning_", "slouching", "waist_hug", "neck_grab", "shoulder_grab",
+                "ass_smack", "ass_press", "foot_dangle", "foot_on_", "feet_on_", "feet_up",
+                "waving_arm", "peeking_through_fingers", "own_hands_together", "fist_in_hand", "mudra",
+                "penetration_gesture", "baby_carry", "standing_on_one_leg", "pigeon-toed",
+                "between_fingers", "heart_hands", "hand_fan", "thigh_straddling", "head_between_thighs",
+                "head_on_arm")
+# 这几个名字太短，只能整名匹配（否则 slim_legs 会被 m_legs 抓走）
+BODY_TO_POSE_EXACT = ("m_legs", "v_legs", "v_arms")
+# 通用动作词：不管现在落在哪个桶（拿着/亲着/舔着某个东西 -> 都是动作，不是那个东西）
+ACTION_PREFIX = ("holding_", "carrying_", "kissing_", "licking_", "grabbing_", "touching_", "pressing_",
+                 "pulling_", "pushing_", "throwing_", "eating_", "drinking_", "smelling_", "sniffing_",
+                 "hugging_", "sitting_on_", "standing_on_", "lying_on_", "leaning_on_", "lifting_",
+                 "riding_")
+# 「riding crop / riding hood」这类名字里有动作词的"物件/服装"，别误伤
+ACTION_EXCLUDE = ("riding_crop", "riding_hood", "riding_boots", "riding_helmet", "riding_gloves",
+                  "riding_breeches", "drinking_glass", "drinking_straw", "throwing_knife",
+                  "holding_bow_(music)_instrument")
+
+
+def action_hit(name):
+    """名字是「动词开头」的动作标签吗（holding_mask / kissing_hand / riding_bicycle…）。"""
+    n = (name or "").lower()
+    if any(x in n for x in ACTION_EXCLUDE):
+        return False
+    return n.startswith(ACTION_PREFIX)
+# 体貌特征里混进来的装备/道具（点名纠正）
+BODY_TO_GEAR = {
+    "shoulder_armor": ("人物", "上身衣装"),
+    "shoulder_pads": ("人物", "上身衣装"),
+    "arm_warmers": ("人物", "上身衣装"),
+    "arm_guards": ("人物", "上身衣装"),
+    "paw_gloves": ("人物", "配饰"),
+    "knee_pads": ("人物", "下身衣装"),
+    "greaves": ("人物", "下身衣装"),
+    "cuisses": ("人物", "下身衣装"),
+    "hip_armor": ("人物", "下身衣装"),
+    "plackart": ("人物", "全身衣装"),
+    "muneate": ("人物", "全身衣装"),
+    "whale_tail_(clothing)": ("人物", "全身衣装"),
+    "holster": ("人物", "配饰"),
+    "back_bow": ("人物", "配饰"),
+    "tail_bow": ("人物", "配饰"),
+    "tail_ornament": ("人物", "配饰"),
+    "waist_bow": ("人物", "配饰"),
+    "thigh_bow": ("人物", "配饰"),
+    "leg_ribbon": ("人物", "配饰"),
+    "arm_ribbon": ("人物", "配饰"),
+    "ankleband": ("人物", "配饰"),
+    "ear_bow": ("人物", "耳朵"),
+    "shoulder_bag": ("物件", "其他物件"),
+    "arm_shield": ("物件", "武器"),
+    "sledgehammer": ("物件", "武器"),
+    "grenade_pin": ("物件", "其他物件"),
+    "dualshock": ("物件", "其他物件"),
+    "handrail": ("物件", "家具与家居"),
+}
 L2_WAIST = ("belt", "sash", "waistband", "腰带", "腰封", "束腰", "皮带")
 # 会被「按穿着部位重判」的二级（含旧桶）；体貌/面部/头发里也混着耳饰、兽耳、纹身这类
 CLOTH_L2 = ("服装", "配饰", "汉服", "上身衣装", "下身衣装", "全身衣装", "束缚具", "鞋袜", "头部配饰",
@@ -1140,6 +1203,10 @@ def rejudge_person(name, zh):
         return "耳朵"
     if name in L2_ACC_EXACT:                  # 袖口/臂环/腰链：配饰，不是束缚具
         return "配饰"
+    if any(k in hay for k in BODY_TO_POSE):    # 体貌特征里混进来的手/臂/腿动作
+        return "姿势动作"
+    if name.lower() in BODY_TO_POSE_EXACT:
+        return "姿势动作"
     if any(k in name.lower() for k in L2_POSE_WORDS):
         return "姿势动作"
     if any(k in hay for k in ("bare_leg", "bare_legs", "裸腿", "bared_legs")):
@@ -1333,7 +1400,9 @@ def split_ambience(name, zh):
 L2_FIX_EXACT = {
     "european_architecture": ("背景", "场景"),          # 含 rope，被当成绳缚了
     "male-female_symbol": ("画面", "装饰"),             # ♂♀ 符号，不是「几个人」
+    "riding_crop": ("物件", "其他物件"),                # 马鞭，是物件不是「类型」
 }
+L2_FIX_EXACT.update(BODY_TO_GEAR)                       # 体貌特征里混进来的装备/道具
 
 
 # 对象与数量里混进来的：性别 / 种族 / 性向 -> 类型，性相关 -> 性行为
@@ -1365,6 +1434,9 @@ def rejudge(l1, l2, name, zh):
     if name in L2_FIX_EXACT:
         return L2_FIX_EXACT[name]
     l2 = (l2 or "").strip()
+    # 动作词优先：拿着/亲着/舔着某个东西 -> 是动作，不是那个东西
+    if l1 in ("人物", "物件", "背景") and action_hit(name):
+        return ("人物", "姿势动作")
     if l1 == "人物" and l2 == "对象与数量":
         sub = rejudge_qty(name, zh)
         return (l1, sub) if sub else (l1, l2)
