@@ -144,6 +144,11 @@ MERGE = [
     ("构图取景", "镜头", "构图取景", "取景"),
     ("构图取景", "半身", "构图取景", "取景"),
     ("构图取景", "全身", "构图取景", "取景"),
+    # ---- 第四轮：装桶成套命名（上身衣装 / 下身衣装 / 全身衣装），原来的「全身装饰」改叫「身体装饰」----
+    ("人物", "上身装饰", "人物", "上身衣装"),
+    ("人物", "下身装饰", "人物", "下身衣装"),
+    ("人物", "衣装", "人物", "全身衣装"),
+    ("人物", "全身装饰", "人物", "身体装饰"),
 ]
 MERGE_MAP = {(a, b): (c, d) for a, b, c, d in MERGE}
 
@@ -1011,10 +1016,10 @@ def contains(name, words):
 
 # ---------------------------------------------------------------- 人物：按「穿在哪 / 长在哪」重判
 # 对齐「Danbooru 标签超市」(tags.novelai.dev) 的叫法与归属：
-#   · 全身性衣物 -> 「衣装」（它同名桶就是连衣裙/制服/和服/泳装）
+#   · 全身性衣物 -> 「全身衣装」（它同名桶就是连衣裙/制服/和服/泳装）
 #   · 领带/领结/衣领/围巾/项链 -> 「脖子」（穿挂在脖子上）
 #   · 兽耳 + 耳饰 -> 「耳朵」；胸部相关 -> 「胸部」；眼镜/眼罩 -> 「头部饰品」
-#   · 创可贴/绷带/纹身/锁链/手铐 -> 「全身装饰」（它同名桶即这类零碎物）
+#   · 创可贴/绷带/纹身/锁链/手铐 -> 「身体装饰」（它同名桶即这类零碎物）
 # 命中顺序 = 优先级：先抓鞋袜/头/耳/颈/身上的零碎，再抓明确的全身装，最后才是上/下身。
 # 优先词（最高优先）：这些词里含别的词表的子串，必须先判，否则会归错
 PRIOR_UPPER = ("连帽衫", "帽衫", "连帽卫衣", "兜帽", "hoodie", "hood", "cape", "capelet", "dress_shirt",
@@ -1056,7 +1061,7 @@ L2_BODY_DECO = ("tattoo", "bandaid", "bandage", "plaster", "shackle", "handcuff"
                 "束缚", "捆绑", "绑缚", "绳缚", "纽扣")
 L2_WAIST = ("belt", "sash", "waistband", "腰带", "腰封", "束腰", "皮带")
 # 会被「按穿着部位重判」的二级（含旧桶）；体貌/面部/头发里也混着耳饰、兽耳、纹身这类
-CLOTH_L2 = ("服装", "配饰", "汉服", "上身装饰", "下身装饰", "衣装", "全身装饰", "鞋袜", "头部饰品",
+CLOTH_L2 = ("服装", "配饰", "汉服", "上身衣装", "下身衣装", "全身衣装", "身体装饰", "鞋袜", "头部饰品",
             "脖子", "耳朵", "胸部")
 REJUDGE_L2 = CLOTH_L2 + ("体貌特征", "面部", "头发")
 # danbooru 的「概念 / meta」标签：说的不是具体穿在哪，归「其他」
@@ -1100,7 +1105,7 @@ def rejudge_person(name, zh):
         return "其他"
     for k in PRIOR_UPPER:                     # 优先词：cape 不能被 cap 抢走
         if k in hay:
-            return "上身装饰"
+            return "上身衣装"
     if any(k in hay for k in L2_SHOES):
         return "鞋袜"
     if any(k in hay for k in L2_HEAD):
@@ -1108,7 +1113,7 @@ def rejudge_person(name, zh):
     if any(k in hay for k in L2_EAR):
         return "耳朵"
     if _body_deco_hit(hay):                   # 纹身/创可贴/束缚 先于「部位」
-        return "全身装饰"
+        return "身体装饰"
     if _neck_hit(hay):
         return "脖子"
     if any(k in hay for k in L2_BREAST):
@@ -1116,11 +1121,11 @@ def rejudge_person(name, zh):
     if any(k in hay for k in L2_WAIST):
         return "配饰"
     if any(k in hay for k in L2_FULL):
-        return "衣装"
+        return "全身衣装"
     if any(k in hay for k in L2_LOWER):
-        return "下身装饰"
+        return "下身衣装"
     if any(k in hay.replace("braid", "") for k in L2_UPPER):   # braid（辫子）不是 bra
-        return "上身装饰"
+        return "上身衣装"
     return None
 
 
@@ -1160,8 +1165,8 @@ def split_item(name, zh):
 # ---------------------------------------------------------------- 构图取景（对齐参考站的「摆位 / 视角」）
 # 参考站把「动作」和「摆位（朝向、视线）」分开，构图取景里混进来的动作词要送回人物。
 FRAME_EXACT = {
-    "bikesuit": ("人物", "衣装"), "topless_female": ("人物", "上身装饰"),
-    "bandaged_torso": ("人物", "全身装饰"), "halfling": ("人物", "类型"),
+    "bikesuit": ("人物", "全身衣装"), "topless_female": ("人物", "上身衣装"),
+    "bandaged_torso": ("人物", "身体装饰"), "halfling": ("人物", "类型"),
     "mini_person": ("人物", "类型"), "chibikemo": ("人物", "类型"), "sheet_ghost": ("人物", "类型"),
     "skull_head": ("人物", "类型"), "fly": ("人物", "类型"),
     "chest_hair_peek": ("人物", "胸部"),
@@ -1248,11 +1253,9 @@ def rejudge(l1, l2, name, zh):
         if sub:
             return (l1, sub)
         if l2 == "服装":                       # 旧桶兜底（早已不存在，留着防呆）
-            return (l1, "上身装饰")
+            return (l1, "上身衣装")
         if l2 == "汉服":
-            return (l1, "衣装")
-        if l2 == "全身装饰":                    # 旧「全身装饰」= 连衣裙/制服 这类全身性衣物
-            return (l1, "衣装")
+            return (l1, "全身衣装")
         return (l1, l2)
     if l1 == "物件":
         return (l1, split_item(name, zh) or "其他物件")
