@@ -660,21 +660,45 @@
                 </div>
                 <div id="wb-gallery" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2"></div>
 
-                <!-- 灯箱：页面内放大看图，← → 切换，Esc 关闭 -->
-                <div id="wb-lightbox" class="hidden fixed inset-0 z-50 bg-black/85 flex-col items-center justify-center gap-2 p-3 pt-14 pb-3">
-                    <img id="wb-lightbox-img" class="max-w-[92vw] max-h-[56vh] object-contain rounded-lg shadow-2xl" alt="">
-                    <!-- 中文对照：把这一张所属批次的提示词按原顺序逐条显示「中文 + english」 -->
-                    <div class="w-full max-w-[92vw]">
-                        <div id="wb-lightbox-tag-info" class="text-[11px] text-slate-400 mb-1"></div>
-                        <div id="wb-lightbox-tags" class="flex flex-wrap gap-1 overflow-y-auto max-h-[22vh] pr-1"></div>
+                <!-- 灯箱：页面内放大看图。支持 滚轮缩放 / 点图切 1:1 / 适应窗口 / ± 键 / ← → 换图 / Esc 关闭 -->
+                <div id="wb-lightbox" class="hidden fixed inset-0 z-50 bg-black/90 flex-col items-center gap-2 p-3 pt-12 pb-3">
+                    <div class="flex flex-wrap items-center justify-center gap-1.5 text-xs text-slate-300 shrink-0">
+                        <button id="wb-lb-zoom-out" title="缩小（-）"
+                                class="w-8 h-8 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center">
+                            <i class="fa-solid fa-magnifying-glass-minus"></i>
+                        </button>
+                        <button id="wb-lb-zoom-in" title="放大（+）"
+                                class="w-8 h-8 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center">
+                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                        </button>
+                        <button id="wb-lb-zoom-actual" title="原始尺寸 1:1（按 1）"
+                                class="h-8 px-2 rounded-md bg-white/10 hover:bg-white/20">1:1</button>
+                        <button id="wb-lb-zoom-fit" title="适应窗口（按 0）"
+                                class="h-8 px-2 rounded-md bg-white/10 hover:bg-white/20">适应</button>
+                        <span id="wb-lb-zoom-label" class="text-slate-400 min-w-[104px] text-center">适应窗口</span>
+                        <span class="text-slate-600">|</span>
+                        <button id="wb-lb-open" title="在新标签页打开原图（可用浏览器自己的缩放）"
+                                class="h-8 px-2 rounded-md bg-white/10 hover:bg-white/20">原图</button>
+                        <button id="wb-lb-toggle-tags" title="显示 / 隐藏下方提示词面板"
+                                class="h-8 px-2 rounded-md bg-white/10 hover:bg-white/20">提示词</button>
+                        <span class="text-slate-500 hidden md:inline">滚轮缩放 · 点图切 1:1 · ← → 换图 · Esc 关闭</span>
                     </div>
-                    <div id="wb-lightbox-cap" class="text-center text-xs text-slate-300"></div>
+                    <!-- 舞台：放大后在这里拖滚动条看细节 -->
+                    <div id="wb-lb-stage" class="flex-grow w-full overflow-auto flex items-center justify-center">
+                        <img id="wb-lightbox-img" class="object-contain rounded-lg shadow-2xl cursor-zoom-in" alt="">
+                    </div>
+                    <!-- 中文对照：把这一张所属批次的提示词按原顺序逐条显示「中文 + english」，可整块折叠 -->
+                    <div id="wb-lb-tagpanel" class="w-full max-w-[92vw] shrink-0">
+                        <div id="wb-lightbox-tag-info" class="text-[11px] text-slate-400 mb-1"></div>
+                        <div id="wb-lightbox-tags" class="flex flex-wrap gap-1 overflow-y-auto max-h-[20vh] pr-1"></div>
+                    </div>
+                    <div id="wb-lightbox-cap" class="text-center text-xs text-slate-300 shrink-0"></div>
                     <button id="wb-lightbox-prev" title="上一张"
-                            class="absolute left-3 top-[28%] -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
+                            class="absolute left-3 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
                     <button id="wb-lightbox-next" title="下一张"
-                            class="absolute right-3 top-[28%] -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
+                            class="absolute right-3 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
                         <i class="fa-solid fa-chevron-right"></i>
                     </button>
                     <button id="wb-lightbox-close" title="关闭 (Esc)"
@@ -1957,7 +1981,10 @@
             lightbox: $('wb-lightbox'), lightboxImg: $('wb-lightbox-img'),
             lightboxTags: $('wb-lightbox-tags'), lightboxTagInfo: $('wb-lightbox-tag-info'),
             lightboxCap: $('wb-lightbox-cap'), lightboxPrev: $('wb-lightbox-prev'),
-            lightboxNext: $('wb-lightbox-next'), lightboxClose: $('wb-lightbox-close')
+            lightboxNext: $('wb-lightbox-next'), lightboxClose: $('wb-lightbox-close'),
+            lbStage: $('wb-lb-stage'), lbTagPanel: $('wb-lb-tagpanel'), lbZoomLabel: $('wb-lb-zoom-label'),
+            lbZoomIn: $('wb-lb-zoom-in'), lbZoomOut: $('wb-lb-zoom-out'), lbZoomFit: $('wb-lb-zoom-fit'),
+            lbZoomActual: $('wb-lb-zoom-actual'), lbOpen: $('wb-lb-open'), lbToggleTags: $('wb-lb-toggle-tags')
         };
         if (!E.gallery) return;
 
@@ -2330,6 +2357,7 @@
                 i = galleryImages.length - 1;
             }
             lbIndex = i < 0 ? 0 : i;
+            setLightboxZoom(null);                    // 每次打开都先回到「适应窗口」
             showLightbox();
         }
 
@@ -2414,6 +2442,111 @@
             E.lightbox.classList.remove('flex');
             E.lightboxImg.removeAttribute('src');
         }
+
+        // ---------------- 灯箱缩放：适应窗口 / 1:1 / 1.5×2×3×4 ----------------
+        // 为什么加：原来图被 max-h-[56vh] 卡死，细节看不清。现在滚轮、± 键、点图都能缩放，
+        // 放大后可以按住拖动平移（不放大时拖动无效，交给滚动条），也可以点「原图」丢给浏览器看。
+        const LB_ZOOM_STEPS = [1, 1.5, 2, 3, 4];
+        let lbScale = null;                     // null = 适应窗口
+        let lbDrag = null;                      // 放大后按住拖动的状态
+        let lbDragMoved = false;
+
+        function applyLightboxZoom() {
+            const img = E.lightboxImg;
+            if (!img) return;
+            const nat = img.naturalWidth ? img.naturalWidth + '×' + img.naturalHeight : '';
+            if (lbScale === null) {
+                img.classList.add('max-h-full', 'max-w-full');
+                img.style.width = '';
+                img.style.height = '';
+                img.classList.add('cursor-zoom-in');
+                img.classList.remove('cursor-zoom-out');
+            } else {
+                img.classList.remove('max-h-full', 'max-w-full');
+                img.style.width = Math.round((img.naturalWidth || 768) * lbScale) + 'px';
+                img.style.height = 'auto';
+                img.classList.add('cursor-zoom-out');
+                img.classList.remove('cursor-zoom-in');
+            }
+            if (E.lbZoomLabel) {
+                E.lbZoomLabel.textContent = (nat ? nat + '　' : '') +
+                    (lbScale === null ? '适应窗口' : Math.round(lbScale * 100) + '%');
+            }
+            if (E.lbZoomActual) E.lbZoomActual.classList.toggle('ring-2', lbScale === 1);
+            if (E.lbZoomFit) E.lbZoomFit.classList.toggle('ring-2', lbScale === null);
+        }
+
+        function setLightboxZoom(scale, keepScroll) {
+            const st = E.lbStage;
+            const sx = keepScroll && st ? st.scrollLeft : 0;
+            const sy = keepScroll && st ? st.scrollTop : 0;
+            lbScale = scale;
+            applyLightboxZoom();
+            if (st) requestAnimationFrame(() => { st.scrollLeft = sx; st.scrollTop = sy; });
+        }
+
+        function zoomLightbox(delta) {           // +1 放大 / -1 缩小
+            if (lbScale === null) {
+                setLightboxZoom(delta > 0 ? 1 : null, true);
+                return;
+            }
+            const i = Math.max(0, LB_ZOOM_STEPS.indexOf(lbScale));
+            const j = i + delta;
+            setLightboxZoom(j < 0 ? null : LB_ZOOM_STEPS[Math.min(j, LB_ZOOM_STEPS.length - 1)], true);
+        }
+
+        function toggleLightboxZoom() {
+            if (lbDragMoved) { lbDragMoved = false; return; }    // 刚才是拖动看图，不算点击
+            setLightboxZoom(lbScale === null ? 1 : null, true);
+        }
+
+        (function initLightboxZoom() {
+            if (!E.lightboxImg) return;
+            E.lightboxImg.addEventListener('load', applyLightboxZoom);
+            E.lightboxImg.addEventListener('click', toggleLightboxZoom);
+            if (E.lbStage) {
+                E.lbStage.addEventListener('wheel', e => {
+                    if (E.lightbox.classList.contains('hidden')) return;
+                    e.preventDefault();                          // 灯箱里滚轮 = 缩放，别带动页面
+                    zoomLightbox(e.deltaY < 0 ? 1 : -1);
+                }, { passive: false });
+            }
+            if (E.lbZoomIn) E.lbZoomIn.addEventListener('click', () => zoomLightbox(1));
+            if (E.lbZoomOut) E.lbZoomOut.addEventListener('click', () => zoomLightbox(-1));
+            if (E.lbZoomFit) E.lbZoomFit.addEventListener('click', () => setLightboxZoom(null));
+            if (E.lbZoomActual) E.lbZoomActual.addEventListener('click', () => setLightboxZoom(1));
+            if (E.lbOpen) E.lbOpen.addEventListener('click', () => {
+                if (E.lightboxImg.src) window.open(E.lightboxImg.src, '_blank');
+            });
+            if (E.lbToggleTags && E.lbTagPanel) {
+                E.lbToggleTags.addEventListener('click', () => {
+                    E.lbTagPanel.classList.toggle('hidden');
+                    E.lbToggleTags.classList.toggle('ring-2', E.lbTagPanel.classList.contains('hidden'));
+                });
+            }
+            // 放大后按住拖动 = 平移（不放大时不动，交给滚动条）
+            E.lightboxImg.addEventListener('pointerdown', e => {
+                if (lbScale === null || !E.lbStage) return;
+                lbDrag = { x: e.clientX, y: e.clientY, l: E.lbStage.scrollLeft, t: E.lbStage.scrollTop };
+                lbDragMoved = false;
+                E.lightboxImg.classList.add('cursor-grabbing');
+                try { E.lightboxImg.setPointerCapture(e.pointerId); } catch (err) { /* 忽略 */ }
+                e.preventDefault();
+            });
+            E.lightboxImg.addEventListener('pointermove', e => {
+                if (!lbDrag || !E.lbStage) return;
+                const dx = e.clientX - lbDrag.x, dy = e.clientY - lbDrag.y;
+                if (Math.abs(dx) + Math.abs(dy) > 3) lbDragMoved = true;
+                E.lbStage.scrollLeft = lbDrag.l - dx;
+                E.lbStage.scrollTop = lbDrag.t - dy;
+            });
+            const endDrag = () => {
+                lbDrag = null;
+                E.lightboxImg.classList.remove('cursor-grabbing');
+            };
+            E.lightboxImg.addEventListener('pointerup', endDrag);
+            E.lightboxImg.addEventListener('pointercancel', endDrag);
+        })();
 
         function stepLightbox(d) {
             if (!galleryImages.length) return;
@@ -3103,6 +3236,10 @@
             if (e.key === 'Escape') closeLightbox();
             else if (e.key === 'ArrowLeft') stepLightbox(-1);
             else if (e.key === 'ArrowRight') stepLightbox(1);
+            else if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomLightbox(1); }
+            else if (e.key === '-' || e.key === '_') { e.preventDefault(); zoomLightbox(-1); }
+            else if (e.key === '0') setLightboxZoom(null);
+            else if (e.key === '1') setLightboxZoom(1);
         });
         E.interrupt.addEventListener('click', async () => {
             try { await api.post('/local/interrupt', null); E.progressText.textContent = '已发送中断指令'; }
