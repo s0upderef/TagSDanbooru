@@ -19,7 +19,7 @@ NOT_USEFUL = ("1", "3", "4")
 # 这些一级本来就不设二级（只按一级筛），"缺二级"不算问题
 NO_L2 = ("物件", "角色", "画师", "作品")
 # 现状基线（只允许变好，不允许变差）：前 20k 里还没认出的实用词条
-BASELINE = {"top5000_missing_l1": 853, "top20k_missing_l1": 3272}
+BASELINE = {"top5000_missing_l1": 703, "top20k_missing_l1": 3122}
 
 
 def main():
