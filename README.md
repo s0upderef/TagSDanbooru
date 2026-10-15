@@ -1,5 +1,10 @@
 # TagSDanbooru · Danbooru 标签助手
 
+![GitHub stars](https://img.shields.io/github/stars/s0upderef/TagSDanbooru?style=flat-square&label=stars)
+![GitHub last commit](https://img.shields.io/github/last-commit/s0upderef/TagSDanbooru?style=flat-square)
+![No CDN](https://img.shields.io/badge/%E4%B8%8D%E4%BE%9D%E8%B5%96%20CDN-%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-brightgreen?style=flat-square)
+![ComfyUI](https://img.shields.io/badge/%E5%87%BA%E5%9B%BE%E5%B7%A5%E4%BD%9C%E5%8F%B0-ComfyUI%20%E5%8F%AF%E9%80%89-blue?style=flat-square)
+
 TagSDanbooru 是一个 Danbooru 标签助手：本地运行的网页，用来搜索、挑选、组合标签，并生成可直接使用的提示词和通配符文件。标签数据与页面用到的前端依赖都随仓库附带，不需要联网。
 
 其中**人气前 20,000 条标签的中文译名已逐条补齐**，热门词条的「一级 / 二级分类」也在持续整理（按「人物 → 构图取景 → 背景 → …」的优先级），可以直接按「服装 / 手势 / 眼睛 / 表情」这类分类挑词。
@@ -11,7 +16,7 @@ TagSDanbooru 是一个 Danbooru 标签助手：本地运行的网页，用来搜
 使用前需要准备：
 
 - **ComfyUI**（可选）：项目不打包 ComfyUI 和模型，出图工作台只是通过 HTTP 调用你本机跑着的那个。不用出图功能可以完全忽略。
-- **标签库 CSV**：已随仓库附带（15 万行，约 6 MB，danbooru 2025-05-01 快照），开箱即用；其中**人气前 5,000 条的中文译名与分类已人工补齐**。想换成自己的词库，覆盖 `_internal/data/tagsd_danbooru_zh.csv` 就行。
+- **标签库 CSV**：已随仓库附带（15 万行，约 6.3 MB，danbooru 2025-05-01 快照），开箱即用；其中**人气前 20,000 条已补齐中文译名，热门词条的两级分类持续整理中**。想换成自己的词库，覆盖 `_internal/data/tagsd_danbooru_zh.csv` 就行。
 - **Python 3.8+（含 aiohttp）**：`启动.bat` 会自动查找可用的 python，顺序是 `TAGSD_PY` → `config.json` 的 `comfy.python` → 常见 ComfyUI 路径 → PATH。用 ComfyUI 自带的那个最省事。
 - **Chrome / Edge / Brave**（可选）：想要「独立窗口 + 单实例接管」这个体验才需要，留空会自动查找。
 
@@ -46,7 +51,16 @@ TagSDanbooru 是一个 Danbooru 标签助手：本地运行的网页，用来搜
 - **提示词生成**：按选好的标签生成标准 Prompt，多种格式，可直接复制。
 - **通配符生成器**：把标签集合导出成 wildcard 文件，SimpAI、Fooocus、A1111/Forge、ComfyUI 都能用。
 
-标签数据基于 danbooru 2025-05-01 快照构建；中文译名与两级分类由本项目持续整理，热门词条已逐条人工补齐。
+标签数据基于 danbooru 2025-05-01 快照构建；中文译名与两级分类由本项目持续整理（热度前 20,000 名中文已齐，分类按「人物 → 构图取景 → 背景」优先推进，详见「数据快照与更新」一节）。
+
+## 🗓 近期更新
+
+- **分类体系重整**：老的 89 个二级桶合并成 12 个一级 / 最多 15 个二级，新增「构图取景」「背景」「元标签」；页面分类按钮按 **人物 → 构图取景 → 背景 → …** 的优先级排，kontext 指令 / 角色 / 画师 / 作品垫底。
+- **数据补全**：热度前 20,000 名的中文 100% 补齐；前 20k 实用词条自动分类 68%，剩下按热度逐批人工补（工具：`classify_tags.py` / `audit_tags.py`）。
+- **出图时不再动已有画廊**：新批次画在独立的「本次出图」区，已经出好的图原地保留；轮询加了看门狗，不会再出现「永远生成中 / 按钮永久变灰」。
+- **删除分四种粒度**：单张（缩略图垃圾桶）/ 某一批 / 某个系列（卡片右侧垃圾桶）/ 全部出图，全部两步确认 + 送回收站。
+- **粘贴提示词即解析**：把一整段现成提示词贴进「已选标签」区自动拆成标签（认 `(tag:1.15)` 权重）。
+- **灯箱中文对照**：看图时下方按原顺序列出这张图的提示词，中文在前、英文在后。
 
 ## 🎨 出图工作台
 
