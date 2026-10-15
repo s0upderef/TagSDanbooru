@@ -390,30 +390,6 @@
                 
                 <!-- 标签列表区域（紧凑布局） -->
                 <div class="bg-slate-800 rounded-lg shadow-sm border border-slate-700 p-3 flex flex-col overflow-hidden">
-                    <!-- 紧凑的分类过滤器 -->
-                    <div id="category-filters" class="flex flex-wrap items-center gap-1 pb-2">
-                        <button id="all-categories" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
-                            <i class="fa-solid fa-globe w-3 text-center"></i><span>全部</span>
-                        </button>
-                        <button data-category="0" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
-                            <i class="fa-solid fa-tag w-3 text-center"></i><span>通用</span>
-                        </button>
-                        <button data-category="1" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
-                            <i class="fa-solid fa-palette w-3 text-center"></i><span>画师</span>
-                        </button>
-                        <button data-category="3" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
-                            <i class="fa-solid fa-copyright w-3 text-center"></i><span>作品</span>
-                        </button>
-                        <button data-category="4" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
-                            <i class="fa-solid fa-user w-3 text-center"></i><span>角色</span>
-                        </button>
-                        <button data-category="5" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
-                            <i class="fa-solid fa-info-circle w-3 text-center"></i><span>元数据</span>
-                        </button>
-                        <button data-category="6" class="category-btn h-7 px-2 text-xs min-w-[50px] flex items-center justify-center gap-1 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600">
-                            <i class="fa-solid fa-cogs w-3 text-center"></i><span>Kontext</span>
-                        </button>
-                    </div>
                     
                     <!-- 人工分类筛选（一级 → 二级联动；仅覆盖已人工分类的高频词条） -->
                     <div id="l1-filters" class="flex flex-wrap items-center gap-1 pb-1 hidden"></div>
@@ -773,7 +749,6 @@
                 resetUrlBtn: document.getElementById('reset-url-btn'),
                 searchBox: document.getElementById('search-box'),
                 resetSearchBtn: document.getElementById('reset-search-btn'),
-                categoryFilters: document.getElementById('category-filters'),
                 progressContainer: document.getElementById('progress-container'),
                 progressBar: document.getElementById('progress-bar'),
                 statusMessage: document.getElementById('status-message'),
@@ -793,7 +768,6 @@
                 formatControls: document.getElementById('format-controls'),
                 copyTextBtn: document.getElementById('copy-text-btn'),
                 selectedCount: document.getElementById('selected-count'),
-                allCategoriesBtn: document.getElementById('all-categories'),
                 l1Filters: document.getElementById('l1-filters'),
                 l2Filters: document.getElementById('l2-filters'),
                 l1Note: document.getElementById('l1-note'),
@@ -1634,19 +1608,6 @@
                 updateL1ButtonStyles();
             };
 
-            const updateCategoryButtonStyles = () => {
-                elements.categoryFilters.querySelectorAll('button').forEach(btn => {
-                    btn.classList.remove('bg-blue-500', 'text-white', 'hover:bg-blue-600');
-                    btn.classList.add('bg-slate-700', 'text-slate-200', 'hover:bg-slate-600');
-                    
-                    if ((btn === elements.allCategoriesBtn && state.currentCategory === 'all') || 
-                        btn.dataset.category === state.currentCategory) {
-                        btn.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
-                        btn.classList.remove('bg-slate-700', 'text-slate-200', 'hover:bg-slate-600');
-                    }
-                });
-            };
-            
             const updateFormatButtonStyles = () => {
                 elements.formatControls.querySelectorAll('.format-btn').forEach(btn => {
                     btn.classList.remove('bg-blue-500', 'text-white', 'hover:bg-blue-600');
@@ -1673,27 +1634,11 @@
                         state.currentCategory = 'all';
                         state.currentL1 = 'all';
                         state.currentL2 = 'all';
-                        updateCategoryButtonStyles();
                         buildL2Row();
                         updateL1ButtonStyles();
                         tagManager.applyFilters();
                     });
                     
-                    // 分类过滤事件
-                    elements.categoryFilters.addEventListener('click', e => {
-                        const btn = e.target.closest('button');
-                        if (!btn) return;
-                        
-                        if (btn === elements.allCategoriesBtn) {
-                            state.currentCategory = 'all';
-                        } else if (btn.dataset.category) {
-                            state.currentCategory = btn.dataset.category;
-                        }
-                        
-                        updateCategoryButtonStyles();
-                        tagManager.applyFilters();
-                    });
-
                     // 人工分类（一级 / 二级）筛选事件
                     elements.l1Filters.addEventListener('click', e => {
                         const btn = e.target.closest('button');
@@ -1713,15 +1658,14 @@
                         tagManager.applyFilters();
                     });
 
-                    // 统计按钮事件
+                    // 统计按钮事件（这里的按钮同时也是一级「按 danbooru 原始类别」筛选的入口，
+                       因为顶部那行重复的分类按钮已经去掉了）
                     elements.statsButtonsContainer.addEventListener('click', e => {
                         const btn = e.target.closest('.stat-button');
                         if (!btn) return;
 
                         const category = btn.dataset.category;
                         state.currentCategory = category;
-                        
-                        updateCategoryButtonStyles();
                         tagManager.applyFilters();
                     });
                     
@@ -1801,8 +1745,7 @@
                         elements.paginationControls.innerHTML = '';
                         elements.selectedTagsContainer.innerHTML = '';
                         
-                        // 更新统计区域、更新统计区域
-                        updateCategoryButtonStyles();
+                        // 更新统计区域（顶部那行 danbooru 类别按钮已移除，统计区的按钮顺带承担该筛选）
                         utils.updateStats();
                         tagDetails.update();
                         
@@ -1838,7 +1781,6 @@
                     
                     // 初始选择默认按钮
                     updateFormatButtonStyles();
-                    updateCategoryButtonStyles();
                     
                     // 鼠标移动时更新提示位置
                     document.addEventListener('mousemove', (e) => {
