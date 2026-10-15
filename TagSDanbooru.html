@@ -1658,8 +1658,8 @@
                         tagManager.applyFilters();
                     });
 
-                    // 统计按钮事件（这里的按钮同时也是一级「按 danbooru 原始类别」筛选的入口，
-                       因为顶部那行重复的分类按钮已经去掉了）
+                    // 统计按钮事件（这排按钮同时也是「按 danbooru 原始类别」筛选的入口，
+                    // 因为顶部那行重复的分类按钮已经去掉了）
                     elements.statsButtonsContainer.addEventListener('click', e => {
                         const btn = e.target.closest('.stat-button');
                         if (!btn) return;
